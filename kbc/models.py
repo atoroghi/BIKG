@@ -320,13 +320,13 @@ class KBCModel(nn.Module, ABC):
             lhs_1, rel_1, rel_2 = self.__get_chains__(chains, graph_type=QuerDAG.TYPE1_2.value)
             # update the precision and information of the variable given the anchor
             # when updating m given d, we should use the tail embedding of d
-            mu_d_for = lhs_1[:, emb_dim:] * rel_1[:, :emb_dim]
-            #mu_d_for = lhs_1[:, :emb_dim] * rel_1[:, :emb_dim]
+            #mu_d_for = lhs_1[:, emb_dim:] * rel_1[:, :emb_dim]
+            mu_d_for = lhs_1[:, :emb_dim] * rel_1[:, :emb_dim]
             h_d_for = (1/cov_anchor) * mu_d_for
             h_m_for = h_m_for + h_d_for
             J_m_for = (1/cov_anchor) + (1/cov_var)
-            mu_d_inv = lhs_1[:, :emb_dim] * rel_1[:, emb_dim:]
-            #mu_d_inv = lhs_1[:, emb_dim:] * rel_1[:, emb_dim:]
+            #mu_d_inv = lhs_1[:, :emb_dim] * rel_1[:, emb_dim:]
+            mu_d_inv = lhs_1[:, emb_dim:] * rel_1[:, emb_dim:]
             h_d_inv = (1/cov_anchor) * mu_d_inv
             h_m_inv = h_m_inv + h_d_inv
             J_m_inv = (1/cov_anchor) + (1/cov_var)
@@ -338,13 +338,13 @@ class KBCModel(nn.Module, ABC):
             h_u_inv = (1/cov_target) * mu_u_inv
 
             #TODO: check if this direction is correct or we should use the tail embedding of m
-            #h_u_for = h_u_for - rel_2[:, :emb_dim] * (1 / J_m_for) * h_m_for
-            h_u_for = h_u_for - rel_2[:, :emb_dim] * (1 / J_m_for) * h_m_inv
+            h_u_for = h_u_for - rel_2[:, :emb_dim] * (1 / J_m_for) * h_m_for
+            #h_u_for = h_u_for - rel_2[:, :emb_dim] * (1 / J_m_for) * h_m_inv
             
             J_u_for = (1/cov_target) - rel_2[:, :emb_dim] * (1 / J_m_for) * rel_2[:, :emb_dim]
 
-            #h_u_inv = h_u_inv - rel_2[:, emb_dim:] * (1 / J_m_inv) * h_m_inv
-            h_u_inv = h_u_inv - rel_2[:, emb_dim:] * (1 / J_m_inv) * h_m_for
+            h_u_inv = h_u_inv - rel_2[:, emb_dim:] * (1 / J_m_inv) * h_m_inv
+            #h_u_inv = h_u_inv - rel_2[:, emb_dim:] * (1 / J_m_inv) * h_m_for
             
             J_u_inv = (1/cov_target) - rel_2[:, emb_dim:] * (1 / J_m_inv) * rel_2[:, emb_dim:]
 
@@ -1324,71 +1324,133 @@ class CP(KBCModel):
             init_size: float = 1e-3
     ):
         super(CP, self).__init__()
-
         self.sizes = sizes
         self.rank = rank
 
-        self.lhs = nn.Embedding(sizes[0], rank, sparse=True)
-        self.rel = nn.Embedding(sizes[1], rank, sparse=True)
-        self.rhs = nn.Embedding(sizes[2], rank, sparse=True)
+        self.embeddings = nn.ModuleList([
+            nn.Embedding(s, rank, sparse=True)
+            for s in sizes[:2]
+        ])
+        self.embeddings[0].weight.data *= init_size
+        self.embeddings[1].weight.data *= init_size
 
-        self.lhs.weight.data *= init_size
-        self.rel.weight.data *= init_size
-        self.rhs.weight.data *= init_size
+        self.init_size = init_size
 
     def entity_embeddings(self, indices: Tensor):
-        return self.rhs(indices)
+        return self.embeddings[0](indices)
 
     def score(self, x):
-        lhs = self.lhs(x[:, 0])
-        rel = self.rel(x[:, 1])
-        rhs = self.rhs(x[:, 2])
+        lhs = self.embeddings[0](x[:, 0])
+        rel = self.embeddings[1](x[:, 1])
+        rhs = self.embeddings[0](x[:, 2])
+        prod = torch.sum(lhs * rel * rhs, 1, keepdim=True)
 
-        return torch.sum(lhs * rel * rhs, 1, keepdim=True)
+        return torch.clamp(prod, min=-20, max=20)
 
-    def score_emb(self, lhs, rel, rhs):
-        return torch.mean(torch.sum(lhs * rel * rhs, 1, keepdim=True))
+    def score_fixed(self, rel: Tensor, arg1: Tensor, arg2: Tensor,
+                    *args, **kwargs) -> Tensor:
+        score = torch.sum(arg1 * rel * arg2, 1, keepdim=True)
+        res = torch.clamp(score, min=-20, max=20)
+        del rel, arg1, arg2, score
+        return res
+    
+    def candidates_score(self,
+                    rel: Tensor,
+                arg1: Optional[Tensor],
+                arg2: Optional[Tensor],
+                *args, **kwargs) -> Tuple[Optional[Tensor], Optional[Tensor]]:
+        emb = self.embeddings[0].weight
+        score_sp = score_po = None
+        # calculates score of <arg1, rel, ent> triples for all entities
+        if arg1 is not None:
+            
+            score_f_sp = (rel * arg1) @ emb.t()
+
+            score_sp = torch.clamp((score_f_sp), min=-20, max=20)
+        # calculates scores of <ent, rel, arg2> triples for all entities
+        if arg2 is not None:
+
+            score_f_po = (rel * arg2) @ emb.t()
+            
+            score_po = torch.clamp((score_f_po), min=-20, max=20)
+
+        return score_sp, score_po
+
+    def score_emb(self, lhs_emb, rel_emb, rhs_emb):
+
+        prod = torch.sum(lhs_emb * rel_emb * rhs_emb, 1, keepdim=True)
+        score = torch.clamp(prod, min=-20, max=20)
+
+        return score, (
+            torch.sqrt(lhs_emb ** 2),
+            torch.sqrt(rel_emb ** 2),
+            torch.sqrt(rhs_emb ** 2)
+        )
 
     def forward(self, x):
-        lhs = self.lhs(x[:, 0])
-        rel = self.rel(x[:, 1])
-        rhs = self.rhs(x[:, 2])
-        return (lhs * rel) @ self.rhs.weight.t(), (lhs, rel, rhs)
+        lhs = self.embeddings[0](x[:, 0])
+        rel = self.embeddings[1](x[:, 1])
+        rhs = self.embeddings[0](x[:, 2])
+        to_score = self.embeddings[0].weight
+        
+        # to_score is all entities in tail
+        prod = (lhs * rel) @ to_score.transpose(0, 1)
+        
+        return torch.clamp(prod, min=-20, max=20), (
+            torch.sqrt(lhs ** 2 ),
+            torch.sqrt(rel ** 2 ),
+            torch.sqrt(rhs ** 2)
+        )    
+    def forward_emb(self, lhs, rel):
+
+        to_score = self.embeddings[0].weight
+
+        # to_score is all entities in tail
+        prod = (lhs * rel) @ to_score.transpose(0, 1)
+        return torch.clamp(prod, min=-20, max=20)
 
     def get_rhs(self, chunk_begin: int, chunk_size: int):
-        return self.rhs.weight.data[
+        return self.embeddings[0].weight.data[
             chunk_begin:chunk_begin + chunk_size
         ].transpose(0, 1)
 
-    def get_queries_separated(self, x: torch.Tensor):
-        lhs = self.lhs(x[:, 0])
-        rel = self.rel(x[:, 1])
+    def get_queries_separated(self, queries: torch.Tensor):
+        lhs = self.embeddings[0](queries[:, 0])
+        rel = self.embeddings[1](queries[:, 1])
 
-        return (lhs,rel)
-
+        return (lhs, rel)
     def get_full_embeddigns(self, queries: torch.Tensor):
+
         if torch.sum(queries[:, 0]).item() > 0:
-            lhs = self.lhs(queries[:, 0])
+            lhs = self.embeddings[0](queries[:, 0])
         else:
             lhs = None
 
         if torch.sum(queries[:, 1]).item() > 0:
-            rel = self.rel(queries[:, 1])
+
+            rel = self.embeddings[1](queries[:, 1])
         else:
             rel = None
 
         if torch.sum(queries[:, 2]).item() > 0:
-            rhs = self.rhs(queries[:, 2])
+            rhs = self.embeddings[0](queries[:, 2])
         else:
             rhs = None
 
         return (lhs,rel,rhs)
 
     def get_queries(self, queries: torch.Tensor):
-        return self.lhs(queries[:, 0]).data * self.rel(queries[:, 1]).data
+        lhs = self.embeddings[0](queries[:, 0])
+        rel = self.embeddings[1](queries[:, 1])
+
+        return torch.cat([
+            lhs * rel,
+            lhs * rel
+        ], 1)
 
     def model_type(self):
-        return 'CP'
+        return "CP"
+
 
 
 class ComplEx(KBCModel):
