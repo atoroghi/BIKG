@@ -37,6 +37,11 @@ def score_queries(args):
     preload_env(args.model_path, data_hard, args.chain_type, mode='hard', valid_heads=valid_heads, valid_tails=valid_tails)
     env = preload_env(args.model_path, data_complete, args.chain_type,
                       mode='complete', valid_heads=valid_heads, valid_tails=valid_tails)
+
+    if 'SimplE' in args.model_path:
+        model_type = 'SimplE'
+    elif 'DistMult' in args.model_path:
+        model_type = 'DistMult'
     # list of hard queries (queries[0]: 2865_5_-1_-1_63_-1234)
     queries = env.keys_hard
     # a dictionary of the form: {2865_5_-1_-1_63_-1234: [4822, 4398]]}
@@ -85,7 +90,8 @@ def score_queries(args):
                                             cov_var=args.cov_var,
                                              cov_target=args.cov_target, possible_heads_emb=possible_heads_emb
                                             , possible_tails_emb=possible_tails_emb,
-                                            all_nodes_embs=all_nodes_embs)
+                                            all_nodes_embs=all_nodes_embs
+                                           ,model_type = model_type)
 # 2i, 2u, 3i 
     elif args.chain_type in (QuerDAG.TYPE2_2.value, QuerDAG.TYPE2_2_disj.value,
                              QuerDAG.TYPE2_3.value):
@@ -93,7 +99,8 @@ def score_queries(args):
                                             disjunctive=disjunctive, cov_anchor=args.cov_anchor,
                                             cov_var=args.cov_var, cov_target=args.cov_target, possible_heads_emb=possible_heads_emb
                                             , possible_tails_emb=possible_tails_emb,
-                                            all_nodes_embs=all_nodes_embs)
+                                            all_nodes_embs=all_nodes_embs
+                                            ,model_type = model_type)
 # pi
     elif args.chain_type == QuerDAG.TYPE3_3.value:
         scores = kbc.model.optimize_3_3_bpl(chains, kbc.regularizer,
@@ -104,7 +111,8 @@ def score_queries(args):
                                                   cov_anchor=args.cov_anchor,
                                             cov_var=args.cov_var, cov_target=args.cov_target, possible_heads_emb=possible_heads_emb
                                             , possible_tails_emb=possible_tails_emb,
-                                            all_nodes_embs=all_nodes_embs)
+                                            all_nodes_embs=all_nodes_embs
+                                            ,model_type = model_type)
 # ip and up
     elif args.chain_type in (QuerDAG.TYPE4_3.value,
                              QuerDAG.TYPE4_3_disj.value):
@@ -116,7 +124,8 @@ def score_queries(args):
                                         disjunctive=disjunctive, cov_anchor=args.cov_anchor,
                                             cov_var=args.cov_var, cov_target=args.cov_target, possible_heads_emb=possible_heads_emb
                                             , possible_tails_emb=possible_tails_emb,
-                                            all_nodes_embs=all_nodes_embs)
+                                            all_nodes_embs=all_nodes_embs
+                                            ,model_type = model_type)
     else:
         raise ValueError(f'Uknown query type {args.chain_type}')
 
