@@ -16,7 +16,7 @@ from kbc.bpl_metrics import evaluation
 
 def score_queries(args):
     mode = args.mode
-
+    explain = args.explain
     dataset = osp.basename(args.path)
 
     data_hard_path = osp.join(args.path, f'{dataset}_{mode}_hard.pkl')
@@ -43,6 +43,7 @@ def score_queries(args):
     elif 'DistMult' in args.model_path:
         model_type = 'DistMult'
     # list of hard queries (queries[0]: 2865_5_-1_-1_63_-1234)
+    raw = env.raw
     queries = env.keys_hard
     # a dictionary of the form: {2865_5_-1_-1_63_-1234: [4822, 4398]]}
     test_ans_hard = env.target_ids_hard
@@ -85,13 +86,14 @@ def score_queries(args):
         scores = torch.cat(scores_lst, 0)
 # 2p and 3p
     elif args.chain_type in (QuerDAG.TYPE1_2.value, QuerDAG.TYPE1_3.value):
-        scores = kbc.model.optimize_chains_bpl(chains, kbc.regularizer
+        scores, top_var_inds_list, top_target_inds = kbc.model.optimize_chains_bpl(chains, kbc.regularizer
                                            ,cov_anchor=args.cov_anchor,
                                             cov_var=args.cov_var,
                                              cov_target=args.cov_target, possible_heads_emb=possible_heads_emb
                                             , possible_tails_emb=possible_tails_emb,
                                             all_nodes_embs=all_nodes_embs
-                                           ,model_type = model_type)
+                                           ,model_type = model_type, explain=explain)
+
 # 2i, 2u, 3i 
     elif args.chain_type in (QuerDAG.TYPE2_2.value, QuerDAG.TYPE2_2_disj.value,
                              QuerDAG.TYPE2_3.value):
@@ -129,8 +131,11 @@ def score_queries(args):
     else:
         raise ValueError(f'Uknown query type {args.chain_type}')
 
+    if args.explain == 'no':
+        top_var_inds_list, top_target_inds = None, None
 
-    return scores, queries, test_ans, test_ans_hard
+
+    return scores, queries, test_ans, test_ans_hard, top_var_inds_list, top_target_inds, raw
 
 def main(args):
     print("BPL OPTIMIZATION")
@@ -140,13 +145,14 @@ def main(args):
     print("cov_anchor:", args.cov_anchor)
     print("cov_var:", args.cov_var)
     print("cov_target:", args.cov_target)
-    scores, queries, test_ans, test_ans_hard = score_queries(args)
+    scores, queries, test_ans, test_ans_hard, top_var_inds_list, top_target_inds, raw = score_queries(args)
+
 
     ent_id_path = osp.join(args.path, 'ind2ent.pkl')
     rel_id_path = osp.join(args.path, 'ind2rel.pkl')
     ent_id = pickle.load(open(ent_id_path, 'rb'))
     rel_id = pickle.load(open(rel_id_path, 'rb'))
-    metrics = evaluation(scores, queries, test_ans, test_ans_hard, rel_id, ent_id, args.explain)
+    metrics = evaluation(scores, queries, test_ans, test_ans_hard, rel_id, ent_id, args.explain, top_var_inds_list, top_target_inds, raw)
     
     print(metrics)
 
@@ -155,6 +161,7 @@ def main(args):
     
     with open(f'cont_n={model_name}_t={args.chain_type}_r={reg_str}_m={args.mode}_lr={args.lr}_opt={args.optimizer}_ms={args.max_steps}.json', 'w') as f:
         json.dump(metrics, f)
+
 
 
 if __name__ == "__main__":
@@ -185,6 +192,5 @@ if __name__ == "__main__":
     parser.add_argument('--max-steps', type=int, default=1000)
     parser.add_argument('--cov_anchor', type=float, default=0.1, help='Covariance of the anchor node')
     parser.add_argument('--cov_var', type=float, default=0.1, help='Covariance of the variable node')
-    parser.add_argument('--cov_target', type=float, default=0.1, help='Covariance of the target node')
-
+    parser.add_argument('--cov_target', type=float, default=0.1, help='Covariance of the target node')                           
     main(parser.parse_args())

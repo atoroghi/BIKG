@@ -319,10 +319,43 @@ class KBCModel(nn.Module, ABC):
             scoring_fn, params, optimizer, lr, max_steps)
         return scores
 
+    def calculate_var_scores(self, mu_vars_for: list = None, mu_vars_inv: list = None, model_type: str = 'DistMult',
+     all_nodes_embs: torch.tensor = None, explain: str = 'no'):
+        top_var_inds_list = []
+        # h_vars_for is a list of len number of variables (each of the shape (num_queries, emb_dim))
+        num_vars = len(mu_vars_for)
+
+
+        for var in range (num_vars):
+
+            topk_vars = torch.zeros(mu_vars_for[0].shape[0], 5)
+
+            for i in range(topk_vars.shape[0]):
+                if model_type == 'SimplE':
+                #    # get the dot product between row[i] of mu_u_for and each row of all_heads_embs
+                    all_heads_embs = all_nodes_embs[:, :all_nodes_embs.shape[1]//2]
+                    all_tails_embs = all_nodes_embs[:, all_nodes_embs.shape[1]//2:]
+                    scores_var_all = torch.clip(
+                        0.5*(all_heads_embs @ (mu_vars_for[var][i]).T + all_tails_embs @ (mu_vars_inv[var][i]).T), min=-20, max=20)
+                    topk_values, topk_indices = torch.topk(scores_var_all, 5)
+                    
+                    topk_vars[i] = topk_indices
+                    
+                elif model_type == 'DistMult':
+                    all_heads_embs = all_nodes_embs
+                    scores_var_all = torch.clip(all_heads_embs @ (mu_vars_for[var][i]).T, min=-20, max=20)
+                    topk_values, topk_indices = torch.topk(scores_var_all, 5)
+                    topk_vars[i] = topk_indices
+            top_var_inds_list.append(topk_vars)
+        return top_var_inds_list
+
+
     def optimize_chains_bpl(self, chains: List, regularizer: Regularizer,
                             cov_anchor: float = 0.1,
                             cov_var: float = 0.1, cov_target: float = 0.1, possible_heads_emb: list = None, possible_tails_emb: list = None,
-                            all_nodes_embs: torch.tensor = None, model_type: str = 'SimplE'):
+                            all_nodes_embs: torch.tensor = None, model_type: str = 'SimplE', explain: str = 'no'):
+        mu_vars_for = []
+        mu_vars_inv = []
 
         if len(chains) == 2:
             if model_type == 'SimplE':
@@ -343,6 +376,10 @@ class KBCModel(nn.Module, ABC):
                 h_d_for = (1/cov_anchor) * mu_d_for
                 h_m_for = h_m_for + h_d_for
                 J_m_for = (1/cov_anchor) + (1/cov_var)
+                mu_m_for = h_m_for / J_m_for
+                mu_vars_for.append(mu_m_for)
+                mu_m_inv = h_m_inv / J_m_inv
+                mu_vars_inv.append(mu_m_inv)
                 #mu_d_inv = lhs_1[:, :emb_dim] * rel_1[:, emb_dim:]
                 mu_d_inv = lhs_1[:, emb_dim:] * rel_1[:, emb_dim:]
                 h_d_inv = (1/cov_anchor) * mu_d_inv
@@ -371,6 +408,10 @@ class KBCModel(nn.Module, ABC):
                 mu_u_for = h_u_for / J_u_for
                 mu_u_inv = h_u_inv / J_u_inv
 
+                if explain == 'yes':
+
+                    top_var_inds_list = self.calculate_var_scores(mu_vars_for, mu_vars_inv, model_type, all_nodes_embs)
+
             elif model_type == 'DistMult':
                 emb_dim = chains[0][0].shape[1]  
                 all_heads_embs = all_nodes_embs
@@ -385,12 +426,17 @@ class KBCModel(nn.Module, ABC):
                 h_d = (1/cov_anchor) * mu_d
                 h_m = h_m + h_d
                 J_m = (1/cov_anchor) + (1/cov_var)
+                mu_m = h_m / J_m
+                mu_vars_for.append(mu_m); mu_vars_inv.append(mu_m)
                 # update the precision and information of the target node given the variable
                 mu_u = possible_tails_emb[1]
                 h_u = (1/cov_target) * mu_u
                 h_u = h_u - rel_2 * (1 / J_m) * h_m
                 J_u = (1/cov_target) - rel_2 * (1 / J_m) * rel_2
                 mu_u = h_u / J_u
+                if explain == 'yes':
+                    
+                    top_var_inds_list = self.calculate_var_scores(mu_vars_for, mu_vars_inv, model_type, all_nodes_embs)
 
 
         elif len(chains) == 3:
@@ -414,6 +460,10 @@ class KBCModel(nn.Module, ABC):
                 h_d_inv = (1/cov_anchor) * mu_d_inv
                 h_m1_inv = h_m1_inv + h_d_inv
                 J_m1_inv = (1/cov_anchor) + (1/cov_var)
+                mu_m1_for = h_m1_for / J_m1_for
+                mu_m1_inv = h_m1_inv / J_m1_inv
+                mu_vars_for.append((mu_m1_for))
+                mu_vars_inv.append((mu_m1_inv))
 
                 # update the precision and information of the second variable given the first variable
                 mu_m2_for = possible_tails_emb[1][:, :emb_dim]
@@ -428,6 +478,11 @@ class KBCModel(nn.Module, ABC):
                     rel_2[:, emb_dim:] * (1 / J_m1_inv) * h_m1_inv
                 J_m2_inv = (1/cov_var) - rel_2[:, emb_dim:] * \
                     (1 / J_m1_inv) * rel_2[:, emb_dim:]
+
+                mu_m2_for = h_m2_for / J_m2_for
+                mu_m2_inv = h_m2_inv / J_m2_inv
+                mu_vars_for.append((mu_m2_for))
+                mu_vars_inv.append((mu_m2_inv))
 
                 # update the precision and information of the target node given the second variable
                 mu_u_for = possible_tails_emb[2][:, :emb_dim]
@@ -445,6 +500,10 @@ class KBCModel(nn.Module, ABC):
 
                 mu_u_for = h_u_for / J_u_for
                 mu_u_inv = h_u_inv / J_u_inv
+
+                if explain == 'yes':
+                    top_var_inds_list = self.calculate_var_scores(mu_vars_for, mu_vars_inv, model_type, all_nodes_embs)
+
             elif model_type == 'DistMult':
                 emb_dim = chains[0][0].shape[1]
                 all_heads_embs = all_nodes_embs
@@ -459,20 +518,24 @@ class KBCModel(nn.Module, ABC):
                 h_d = (1/cov_anchor) * mu_d
                 h_m1 = h_m1 + h_d
                 J_m1 = (1/cov_anchor) + (1/cov_var)
+                mu_m1 = h_m1 / J_m1
+                mu_vars_for.append((mu_m1)); mu_vars_inv.append((mu_m1))
                 mu_m2 = possible_tails_emb[1]
                 h_m2 = (1/cov_var) * mu_m2
                 h_m2 = h_m2 - rel_2 * (1 / J_m1) * h_m1
                 J_m2 = (1/cov_var) - rel_2 * (1 / J_m1) * rel_2
+                mu_m2 = h_m2 / J_m2
+                mu_vars_for.append((mu_m2)); mu_vars_inv.append((mu_m2))
                 mu_u = possible_tails_emb[2]   
                 h_u = (1/cov_target) * mu_u
                 h_u = h_u - rel_3 * (1 / J_m2) * h_m2
                 J_u = (1/cov_target) - rel_3 * (1 / J_m2) * rel_3
                 mu_u = h_u / J_u
 
+                if explain == 'yes':
+                    top_var_inds_list = self.calculate_var_scores(mu_vars_for, mu_vars_inv, model_type, all_nodes_embs)
         else:
             assert False, f'Invalid number of chains: {len(chains)}'
-
-        scores = []
 
         #a = torch.tensor ([1,2,3, -1])
         #b = torch.tensor ([[4,5,6,-2], [7,8,9,-2], [10,11,12,-2]])
@@ -481,29 +544,28 @@ class KBCModel(nn.Module, ABC):
         if model_type == 'SimplE':
 
             scores = torch.zeros(mu_u_for.shape[0], all_heads_embs.shape[0])
+            top_target_inds = torch.zeros(mu_u_for.shape[0], 5)
 
             for i in range(scores.shape[0]):
                 #    # get the dot product between row[i] of mu_u_for and each row of all_heads_embs
                 scores[i] = torch.clip(
                     0.5*(all_heads_embs @ (mu_u_for[i]).T + all_tails_embs @ (mu_u_inv[i]).T), min=-20, max=20)
-
+                topk_values, topk_indices = torch.topk(scores[i], 5)
+                top_target_inds[i] = topk_indices
         elif model_type == 'DistMult':
+
             scores = torch.zeros(mu_u.shape[0], all_heads_embs.shape[0])
+            top_target_inds = torch.zeros(mu_u.shape[0], 5)
             for i in range(scores.shape[0]):
                 # get the dot product between row[i] of mu_u and each row of all_heads_embs
                 scores[i] = torch.clip(
                     all_heads_embs @ (mu_u[i]).T, min=-20, max=20)
-
-        #obj_guess_1 = torch.normal(0, self.init_size, lhs_1.shape, device=lhs_1.device, requires_grad=True)
-        #obj_guess_2 = torch.normal(0, self.init_size, lhs_1.shape, device=lhs_1.device, requires_grad=True)
-        #params = [obj_guess_1, obj_guess_2]
-        # if len(chains) == 3:
-        #    obj_guess_3 = torch.normal(0, self.init_size, lhs_1.shape, device=lhs_1.device, requires_grad=True)
-        #    params.append(obj_guess_3)
-
-        #scores = self._optimize_variables(scoring_fn, params, optimizer, lr, max_steps)
-
-        return scores
+                topk_values, topk_indices = torch.topk(scores[i], 5)
+                top_target_inds[i] = topk_indices
+        if explain == 'yes':
+            return scores, top_var_inds_list, top_target_inds
+        else:
+            return scores, None, None
 
     def optimize_intersections_bpl(self, chains: List, regularizer: Regularizer,
                                    max_steps: int = 20, lr: float = 0.1,

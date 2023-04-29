@@ -4,17 +4,107 @@ from tqdm import tqdm
 import logging
 import sys
 
-def evaluation(scores, queries, test_ans, test_ans_hard, rel_id, ent_id, explain):
+
+def explain_query(rel_id, ent_id, top_var_inds_list, top_target_inds, raw, query_id):
+    raw_chain = raw[query_id].data['raw_chain']
+    conv_raw_chain = 1 * raw_chain
+    print(conv_raw_chain)
+    
+    for ind in range(len(raw_chain)):
+        part = raw_chain[ind]
+        conv_raw_chain[ind][1] = rel_id[part[1]]
+    # replacing the anchor node
+    conv_raw_chain[0][0] = ent_id[raw_chain[0][0]]
+    # replacing the variables of the first part 
+    if len(conv_raw_chain) == 2:
+        top_vars_0 = []
+        for var in top_var_inds_list[0][query_id]:
+            top_vars_0.append(ent_id[int(var)])
+        conv_raw_chain[0][2] = top_vars_0
+        conv_raw_chain[1][0] = conv_raw_chain[0][2]
+
+        cov_gt_answers = []
+        gt_answers = conv_raw_chain[-1][2]
+        #cheking if the top targets are in the gt answers
+        gt_array = np.array(gt_answers).astype(int)
+        top_targets_array = np.array(top_target_inds[query_id]).astype(int)
+        success = np.intersect1d(gt_array, top_targets_array).shape[0] > 0
+
+        # converting ground truth answers to entity ids
+        for ent in gt_answers:
+            cov_gt_answers.append(ent_id[int(ent)])
+
+        top_targets = []
+        for  ent in (top_target_inds[query_id]):
+            top_targets.append(ent_id[int(ent)])
+        conv_raw_chain[-1][2] = top_targets
+
+    if len(conv_raw_chain) == 3:
+        top_vars_0 = []
+        for var in top_var_inds_list[0][query_id]:
+            top_vars_0.append(ent_id[int(var)])
+        conv_raw_chain[0][2] = top_vars_0
+        conv_raw_chain[1][0] = conv_raw_chain[0][2]
+
+        top_vars_middle = []
+        for var in top_var_inds_list[1][query_id]:
+            top_vars_middle.append(ent_id[int(var)])
+        conv_raw_chain[1][2] = top_vars_middle
+        conv_raw_chain[2][0] = conv_raw_chain[1][2]
+
+        top_targets = []
+        cov_gt_answers = []
+        gt_answers = conv_raw_chain[-1][2]
+        #cheking if the top targets are in the gt answers
+        gt_array = np.array(gt_answers).astype(int)
+        top_targets_array = np.array(top_target_inds[query_id]).astype(int)
+        success = np.intersect1d(gt_array, top_targets_array).shape[0] > 0
+
+        # converting ground truth answers to entity ids
+        for ent in gt_answers:
+            cov_gt_answers.append(ent_id[int(ent)])
+        
+        # converting top target inds to entity ids
+        for ent in (top_target_inds[query_id]):
+            top_targets.append(ent_id[int(ent)])
+        conv_raw_chain[-1][2] = top_targets
+
+    
+    #write the results to a text file
+
+    if success:
+        f = open("explain_success_1_{}.txt".format(len(conv_raw_chain)), "w")
+    else:
+        f = open("explain_fail_1_{}.txt".format(len(conv_raw_chain)), "w")
+    f.write("query id:"+ str(query_id))
+    f.write("\n")
+    f.write("raw chain:"+"\t"+ str(conv_raw_chain))
+    f.write("\n")
+    f.write("ground truth answers:"+"\t"+ str(cov_gt_answers))
+
+
+
+def evaluation(scores, queries, test_ans, test_ans_hard, rel_id, ent_id, explain, top_var_inds_list, top_target_inds, raw):
+    
+    
+    
+    
     nentity = len(scores[0])
     step = 0
     logs = []
 
+    
+
     for query_id, query in enumerate(tqdm(queries[:100])):
+        if explain == 'yes':
+            explain_query(rel_id, ent_id, top_var_inds_list, top_target_inds, raw, query_id)
+
 
         score = scores[query_id]
         score -= (torch.min(score) - 1)
         ans = test_ans[query]
         hard_ans = test_ans_hard[query]
+
         all_idx = set(range(nentity))
 
         false_ans = all_idx - set(ans)

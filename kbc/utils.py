@@ -162,10 +162,11 @@ class DynKBCSingleton:
         return DynKBCSingleton.__instance
 
 
-    def set_attr(self, kbc, chains, parts, target_ids_hard, keys_hard,
+    def set_attr(self, raw, kbc, chains, parts, target_ids_hard, keys_hard,
                  target_ids_complete, keys_complete,chain_instructions,
                  graph_type, lhs_norm, cuda, ent_id2fb, rel_id2fb, fb2name,
                 possible_heads_emb, possible_tails_emb):
+        self.raw = raw
         self.kbc = kbc
         self.chains = chains
         self.parts = parts
@@ -189,7 +190,7 @@ class DynKBCSingleton:
         self.possible_tails_emb = possible_tails_emb
         self.__instance = self
 
-    def __init__(self,kbc = None, chains = None , parts = None, \
+    def __init__(self,raw = None, kbc = None, chains = None , parts = None, \
     target_ids_hard = None, keys_hard = None, target_ids_complete = None, keys_complete = None, \
     lhs_norm = None, chain_instructions = None, graph_type = None, cuda = None, possible_heads_emb=None,
     possible_tails_emb = None):
@@ -197,6 +198,7 @@ class DynKBCSingleton:
         if DynKBCSingleton.__instance != None:
             raise Exception("This class is a singleton!")
         else:
+            DynKBCSingleton.raw = raw
             DynKBCSingleton.kbc = kbc
             DynKBCSingleton.chains = chains
             DynKBCSingleton.parts = parts
@@ -1084,7 +1086,7 @@ def preload_env(kbc_path, dataset, graph_type, mode="hard", kg_path=None,
                 ent_id2fb, rel_id2fb, fb2name = None, None, None
 
 
-            env.set_attr(kbc, chains, parts, target_ids, keys, None, None, chain_instructions, graph_type, lhs_norm, False, ent_id2fb, rel_id2fb, fb2name,
+            env.set_attr(raw, kbc, chains, parts, target_ids, keys, None, None, chain_instructions, graph_type, lhs_norm, False, ent_id2fb, rel_id2fb, fb2name,
             possible_heads_emb, possible_tails_emb)
 
             # env.set_attr(kbc,chains,parts,target_ids, keys, chain_instructions , graph_type, lhs_norm)
