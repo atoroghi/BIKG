@@ -118,6 +118,78 @@ with open(path + '/valid.txt.pickle', 'wb') as f:
 with open(path + '/test.txt.pickle', 'wb') as f:
     pickle.dump(test, f)
 
+
+# %%
+files = ['train.txt.pickle', 'valid.txt.pickle', 'test.txt.pickle']
+entities, relations = set(), set()
+for f in files:
+    file_path = os.path.join(path, f)
+    with open(file_path, 'rb') as f:
+        to_read = pickle.load(f)
+        for line in to_read:
+            lhs, rel, rhs = str(line[0]), str(line[1]), str(line[2])
+            print(rel)
+            entities.add(lhs)
+            entities.add(rhs)
+            relations.add(rel)
+            relations.add(rel+'_reverse')
+entities_to_id = {x: i for (i, x) in enumerate(sorted(entities))}
+relations_to_id = {x: i for (i, x) in enumerate(sorted(relations))}
+
+
+n_relations = len(relations_to_id)
+n_entities = len(entities_to_id)
+print(f'{n_entities} entities and {n_relations} relations')
+
+# %%
+for (dic, f) in zip([entities_to_id, relations_to_id], ['ent_id', 'rel_id']):
+    pickle.dump(dic, open(os.path.join(path, f'{f}.pickle'), 'wb'))
+
+
+# %%
+to_skip = {'lhs': defaultdict(set), 'rhs': defaultdict(set)}
+
+for file in files:
+    file_path = os.path.join(path, file)
+    with open(file_path, 'rb') as f:
+        to_read = pickle.load(f)
+
+        examples = []
+        for line in to_read:
+            lhs, rel, rhs = str(line[0]), str(line[1]), str(line[2])
+            lhs_id = entities_to_id[lhs]
+            rhs_id = entities_to_id[rhs]
+            rel_id = relations_to_id[rel]
+            inv_rel_id = relations_to_id[rel + '_reverse']
+            examples.append([lhs_id, rel_id, rhs_id])
+            to_skip['rhs'][(lhs_id, rel_id)].add(rhs_id)
+            to_skip['lhs'][(rhs_id, inv_rel_id)].add(lhs_id)
+            # Add inverse relations for training
+            if file == 'train.txt.pickle':
+                examples.append([rhs_id, inv_rel_id, lhs_id])
+                to_skip['rhs'][(rhs_id, inv_rel_id)].add(lhs_id)
+                to_skip['lhs'][(lhs_id, rel_id)].add(rhs_id)
+    out = open(os.path.join(path,'new'+ file), 'wb')
+    pickle.dump(np.array(examples).astype('uint64'), out)
+    out.close()
+
+to_skip_final = {'lhs': {}, 'rhs': {}}
+for kk, skip in to_skip.items():
+    for k, v in skip.items():
+        to_skip_final[kk][k] = sorted(list(v))
+out = open(os.path.join(path, 'new_to_skip.pickle'), 'wb')
+pickle.dump(to_skip_final, out)
+out.close()
+
+
+
+
+
+
+
+
+
+
 # %%
 # forming the type checking dictionaries
 all_data = np.concatenate((train, test, valid), axis = 0)
@@ -149,6 +221,29 @@ out_file = open(path + '/valid_tails.pickle', 'wb')
 pickle.dump(valid_tails, out_file)
 out_file.close()
 # %%
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 # making the rel_id, ent_id, and to_skip dictionaries
 all_data = np.concatenate((train, test, valid), axis = 0)
 rel_id = {}

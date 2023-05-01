@@ -71,22 +71,22 @@ class Dataset(object):
             if n_queries > 0:
                 permutation = torch.randperm(len(examples))[:n_queries]
                 q = examples[permutation]
-            #if m == 'lhs':
-            #    # swap the first and second column
-            #    tmp = torch.clone(q[:, 0])
-            #    q[:, 0] = q[:, 2]
-            #    q[:, 2] = tmp
-#
-            #    # Note: in q2b relations are labeled as
-            #    # [rel1, rel1inv, rel2, rel2inv, ...]
-            #    # In contrast, KBC uses
-            #    # [rel1, rel2, ..., rel1inv, rel2inv, ...]
-            #    # That's the reason for this:
-            #    rels = q[:, 1].clone()
-            #    q[:, 1][rels % 2 == 0] += 1
-            #    q[:, 1][rels % 2 != 0] -= 1
-            #    # Instead of:
-            #    # q[:, 1] += self.n_predicates // 2
+            if m == 'lhs':
+                # swap the first and second column
+                tmp = torch.clone(q[:, 0])
+                q[:, 0] = q[:, 2]
+                q[:, 2] = tmp
+
+                # Note: in q2b relations are labeled as
+                # [rel1, rel1inv, rel2, rel2inv, ...]
+                # In contrast, KBC uses
+                # [rel1, rel2, ..., rel1inv, rel2inv, ...]
+                # That's the reason for this:
+                rels = q[:, 1].clone()
+                q[:, 1][rels % 2 == 0] += 1
+                q[:, 1][rels % 2 != 0] -= 1
+                # Instead of:
+                # q[:, 1] += self.n_predicates // 2
 
             # get the ranks of the correct answers (while skipping the to_skip) and compute the mean reciprocal rank and hits@k
 
