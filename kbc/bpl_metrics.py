@@ -8,7 +8,6 @@ import sys
 def explain_query(rel_id, ent_id, top_var_inds_list, top_target_inds, raw, query_id):
     raw_chain = raw[query_id].data['raw_chain']
     conv_raw_chain = 1 * raw_chain
-    print(conv_raw_chain)
     
     for ind in range(len(raw_chain)):
         part = raw_chain[ind]
@@ -73,14 +72,15 @@ def explain_query(rel_id, ent_id, top_var_inds_list, top_target_inds, raw, query
     #write the results to a text file
 
     if success:
-        f = open("explain_success_1_{}.txt".format(len(conv_raw_chain)), "w")
+        f = open("explain_success_1_{}.txt".format(len(conv_raw_chain)), "a")
     else:
-        f = open("explain_fail_1_{}.txt".format(len(conv_raw_chain)), "w")
+        f = open("explain_fail_1_{}.txt".format(len(conv_raw_chain)), "a")
     f.write("query id:"+ str(query_id))
     f.write("\n")
     f.write("raw chain:"+"\t"+ str(conv_raw_chain))
     f.write("\n")
     f.write("ground truth answers:"+"\t"+ str(cov_gt_answers))
+    f.write("\n")
 
 
 

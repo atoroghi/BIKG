@@ -280,6 +280,8 @@ if __name__ == "__main__":
 
 	dataset = Dataset(os.path.join(args.path, 'kbc_data'))
 	args.data_shape = dataset.get_shape()
+	print(args.data_shape)
+
 
 	if not args.eval_only:
         # creating an instance of the KGE model

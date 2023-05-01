@@ -4,7 +4,7 @@ import torch
 import numpy as np
 import random
 #%%
-dataset = 'NELL'
+dataset = 'FB15k'
 
 #%%
 # write a function to load data from pickle files
@@ -12,8 +12,8 @@ from pathlib import Path
 import pickle
 path = os.path.join(os.getcwd() ,'data', dataset, 'kbc_data')
 root = Path(path)
-root = os.path.join(os.getcwd(), '..') 
-root = root + '/data/NELL/kbc_data'
+root = os.path.join(os.getcwd()) 
+root = root + '/data/FB15k/kbc_data'
 print(root)
 print(os.listdir(root))
 #%%
@@ -56,4 +56,5 @@ out_file = open(root + '/valid_tails.pickle', 'wb')
 pickle.dump(valid_tails, out_file)
 out_file.close()
 
+# %%
 # %%
