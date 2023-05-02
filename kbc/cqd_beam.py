@@ -34,8 +34,8 @@ def run(kbc_path, dataset_hard, dataset_complete, dataset_name, t_norm='min', ca
 
 def answer(kbc_path, dataset_hard, dataset_complete, t_norm='min', query_type=QuerDAG.TYPE1_2, candidates=3, scores_normalize = 0, kg_path=None, explain=False):
     # takes each query chain, creates instruction on what type it is, and replaces each entity with its embedding
-    env = preload_env(kbc_path, dataset_hard, query_type, mode='hard', kg_path=kg_path, explain=explain)
-    env = preload_env(kbc_path, dataset_complete, query_type, mode='complete', explain=explain)
+    env = preload_env(kbc_path, dataset_hard, query_type, mode='hard', kg_path=kg_path, explain=explain, valid_heads=valid_heads, valid_tails=valid_tails)
+    env = preload_env(kbc_path, dataset_complete, query_type, mode='complete', explain=explain, valid_heads=valid_heads, valid_tails=valid_tails)
 
     # tells us how many parts there are in each query
     if '1' in env.chain_instructions[-1][-1]:
@@ -122,6 +122,10 @@ if __name__ == "__main__":
 
     data_hard = pickle.load(open(data_hard_path, 'rb'))
     data_complete = pickle.load(open(data_complete_path, 'rb'))
+    valid_heads_path = osp.join(args.path, 'kbc_data','valid_heads.pickle')
+    valid_heads = pickle.load(open(valid_heads_path, 'rb'))
+    valid_tails_path = osp.join(args.path, 'kbc_data','valid_tails.pickle')
+    valid_tails = pickle.load(open(valid_tails_path, 'rb'))
 
     candidates = int(args.candidates)
     run(args.model_path, data_hard, data_complete,
