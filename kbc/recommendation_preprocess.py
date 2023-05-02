@@ -1,4 +1,5 @@
 #%%
+#%%
 import os, pickle, sys, time
 import torch
 import numpy as np
@@ -132,7 +133,7 @@ for f in files:
             entities.add(lhs)
             entities.add(rhs)
             relations.add(rel)
-            relations.add(rel+'_reverse')
+            #relations.add(rel+'_reverse')
 entities_to_id = {x: i for (i, x) in enumerate(sorted(entities))}
 relations_to_id = {x: i for (i, x) in enumerate(sorted(relations))}
 
@@ -160,15 +161,18 @@ for file in files:
             lhs_id = entities_to_id[lhs]
             rhs_id = entities_to_id[rhs]
             rel_id = relations_to_id[rel]
-            inv_rel_id = relations_to_id[rel + '_reverse']
+            #inv_rel_id = relations_to_id[rel + '_reverse']
             examples.append([lhs_id, rel_id, rhs_id])
             to_skip['rhs'][(lhs_id, rel_id)].add(rhs_id)
-            to_skip['lhs'][(rhs_id, inv_rel_id)].add(lhs_id)
+            #to_skip['lhs'][(rhs_id, inv_rel_id)].add(lhs_id)
+            to_skip['lhs'][(rhs_id, rel_id)].add(lhs_id)
             # Add inverse relations for training
-            if file == 'train.txt.pickle':
-                examples.append([rhs_id, inv_rel_id, lhs_id])
-                to_skip['rhs'][(rhs_id, inv_rel_id)].add(lhs_id)
-                to_skip['lhs'][(lhs_id, rel_id)].add(rhs_id)
+            #if file == 'train.txt.pickle':
+            #    #examples.append([rhs_id, inv_rel_id, lhs_id])
+            #    examples.append([rhs_id, rel_id, lhs_id])
+            #    #to_skip['rhs'][(rhs_id, inv_rel_id)].add(lhs_id)
+            #    to_skip['rhs'][(rhs_id, rel_id)].add(lhs_id)
+            #    to_skip['lhs'][(lhs_id, rel_id)].add(rhs_id)
     out = open(os.path.join(path,'new'+ file), 'wb')
     pickle.dump(np.array(examples).astype('uint64'), out)
     out.close()
@@ -302,3 +306,14 @@ out = open(os.path.join(path , 'to_skip.pickle'), 'wb')
 pickle.dump(to_skip_final, out)
 out.close()
 # %%
+
+
+
+
+
+
+
+
+# %%
+# After running till line 106 (for training on the BCIE KG trainer)
+

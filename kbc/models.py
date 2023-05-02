@@ -59,7 +59,7 @@ class KBCModel(nn.Module, ABC):
     def get_ranking(
             self, queries: torch.Tensor,
             filters: Dict[Tuple[int, int], List[int]],
-            batch_size: int = 1000, chunk_size: int = -1
+            batch_size: int = 1000, chunk_size: int = -1, side: str = 'k'
     ):
         """
         Returns filtered ranking for each queries.
@@ -87,8 +87,13 @@ class KBCModel(nn.Module, ABC):
                     # set filtered and true scores to -1e6 to be ignored
                     # take care that scores are chunked
                     for i, query in enumerate(these_queries):
-                        filter_out = filters[(
-                            query[0].item(), query[1].item())]
+                        try:
+                            filter_out = filters[(
+                                query[0].item(), query[1].item())]
+                        except:
+                            print(query)
+                            print(side)
+                            sys.exit()
                         filter_out += [queries[b_begin + i, 2].item()]
                         if chunk_size < self.sizes[2]:
                             filter_in_chunk = [
