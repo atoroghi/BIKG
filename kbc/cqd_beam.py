@@ -17,6 +17,10 @@ def run(kbc_path, dataset_hard, dataset_complete, dataset_name, t_norm='min', ca
     experiments = [t.value for t in QuerDAG]
     experiments.remove(QuerDAG.TYPE1_1.value)
     experiments.remove(QuerDAG.TYPE1_3_joint.value)
+    #experiments.remove(QuerDAG.TYPE1_2.value)
+    experiments.remove(QuerDAG.TYPE2_2.value)
+    experiments.remove(QuerDAG.TYPE2_2_disj.value)
+    experiments.remove(QuerDAG.TYPE2_3.value)
 
     print(kbc_path, dataset_name, t_norm, candidates)
 

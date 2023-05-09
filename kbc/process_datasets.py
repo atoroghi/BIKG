@@ -5,7 +5,7 @@
 # LICENSE file in the root directory of this source tree.
 #
 import argparse
-import os
+import os,sys
 import errno
 import shutil
 import pickle
@@ -17,6 +17,8 @@ from collections import defaultdict
 from kbc.chain_dataset import ChaineDataset
 from kbc.chain_dataset import Chain
 from kbc.chain_dataset import save_chain_data
+
+
 
 KBC = 'kbc'
 Q2B_QUERIES = 'q2b_queries'
@@ -169,6 +171,7 @@ translator_dict = {'1c': '1chain1', '1c_hard': '1chain1_hard',
 def convert_q2b_queries(path, split):
     split_check = f'{split}_ans'
     files = [i for i in os.listdir(path) if os.path.isfile(os.path.join(path, i)) and split_check in i]
+
 
     dataset_name = os.path.basename(path)
 
@@ -369,15 +372,15 @@ def extract_q2b_triples(path):
     splits = ['train', 'valid', 'test']
 
     entities_to_id, relations_to_id = load_q2b_maps(path)
+
     # String identifiers are not used in Q2B's NELL
     entities_to_id = {e: e for e in entities_to_id}
     relations_to_id = {r: r for r in relations_to_id}
-
     out_path = os.path.join(path, 'kbc_data')
 
-    if os.path.exists(out_path):
-        shutil.rmtree(out_path)
-    os.makedirs(out_path)
+    #if os.path.exists(out_path):
+    #    shutil.rmtree(out_path)
+    os.makedirs(out_path, exist_ok=True)
 
     for (dic, f) in zip([entities_to_id, relations_to_id], ['ent_id', 'rel_id']):
         f = open(os.path.join(out_path, f'{f}.pickle'), 'wb')

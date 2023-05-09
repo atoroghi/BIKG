@@ -64,7 +64,7 @@ class ChaineDataset():
         except RuntimeError as e:
             print(e)
 
-# not sure but seems like this function gets relations that are connected to each entity in the test set and stores them in a list
+#this function gets relations that are connected to each entity in the test set and stores them in a list
     def __get_neighbour_relations__(self):
         try:
 

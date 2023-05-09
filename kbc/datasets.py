@@ -27,20 +27,26 @@ class Dataset(object):
         with open(str(self.root / 'ent_id.pickle'), 'rb') as f:
             self.n_entities = len(pickle.load(f))
         with open(str(self.root / 'rel_id.pickle'), 'rb') as f:
-            self.n_predicates = len(pickle.load(f))
-
+            rel_id = pickle.load(f)
+        self.n_predicates = len(rel_id)
+        try:
+            self.likes_rel = rel_id[(self.n_predicates - 1)]
+        except:
+            pass
         inp_f = open(str(self.root / f'to_skip.pickle'), 'rb')
         #self.to_skip keys are "lhs" and "rhs"
         self.to_skip: Dict[str, Dict[Tuple[int, int], List[int]]] = pickle.load(inp_f)
         inp_f.close()
 
-        
-        head_file = open(str(self.root / ('valid_heads.pickle')), 'rb')
-        self.valid_heads = pickle.load(head_file)
-        head_file.close()
-        tail_file = open(str(self.root / ('valid_tails.pickle')), 'rb')
-        self.valid_tails = pickle.load(tail_file)
-        tail_file.close()
+        try:
+            head_file = open(str(self.root / ('valid_heads.pickle')), 'rb')
+            self.valid_heads = pickle.load(head_file)
+            head_file.close()
+            tail_file = open(str(self.root / ('valid_tails.pickle')), 'rb')
+            self.valid_tails = pickle.load(tail_file)
+            tail_file.close()
+        except:
+            pass
 
 
     def get_examples(self, split):
@@ -83,9 +89,9 @@ class Dataset(object):
                 # In contrast, KBC uses
                 # [rel1, rel2, ..., rel1inv, rel2inv, ...]
                 # That's the reason for this:
-            #    rels = q[:, 1].clone()
-            #    q[:, 1][rels % 2 == 0] += 1
-            #    q[:, 1][rels % 2 != 0] -= 1
+                rels = q[:, 1].clone()
+                q[:, 1][rels % 2 == 0] += 1
+                q[:, 1][rels % 2 != 0] -= 1
                 # Instead of:
                 # q[:, 1] += self.n_predicates // 2
 

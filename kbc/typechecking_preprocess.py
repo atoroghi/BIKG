@@ -13,7 +13,7 @@ import pickle
 path = os.path.join(os.getcwd() ,'data', dataset, 'kbc_data')
 root = Path(path)
 root = os.path.join(os.getcwd()) 
-root = root + '/data/FB15k/kbc_data'
+root = root + '/../data/FB15k/kbc_data'
 print(root)
 print(os.listdir(root))
 #%%

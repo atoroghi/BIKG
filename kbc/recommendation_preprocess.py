@@ -25,11 +25,15 @@ def split_kg(kg, split = 0.2):
     num_rels = len(set(kg[:, 1]))
     num_ents = len(set(kg[:, 0]) | set(kg[:, 2]))
     test_start = int((1-split)*kg.shape[0])
-    #making sure that all entities and relations are present in the train set
-    while (len(set(kg[:test_start,1])) < num_rels) or (len(set(kg[:test_start, 0]) | set(kg[:test_start, 2]))<num_ents):
+    #making sure that all relations are present in the train set
+    #while (len(set(kg[:test_start,1])) < num_rels) or (len(set(kg[:test_start, 0]) | set(kg[:test_start, 2]))<num_ents):
+    while (len(set(kg[:test_start,1])) < num_rels):
         np.random.shuffle(kg)
     kg_train = kg[:test_start]
     kg_test = kg[test_start:]
+    # eliminate rows from kg_test that have entities not present in kg_train
+    kg_test = kg_test[np.isin(kg_test[:, 0], kg_train[:, 0])]
+    kg_test = kg_test[np.isin(kg_test[:, 2], kg_train[:, 2])]
     return kg_train , kg_test
 #%%
 dataset = 'amazon-book'
@@ -86,16 +90,51 @@ rec = np.concatenate((rec_train, rec_test), axis = 0)
 
 #offset the users_ids by the number of entities
 rec[:, 0] += n_e
+
+
 # %%
-rec_train, rec_testval = split_kg(rec, split = 0.2)
+# change the relations number and add reverse relations
+#kg_new = np.zeros((2*kg.shape[0], 3)).astype(np.uint32)
+#for i, row in enumerate(kg):
+#    # Extract values from row1
+#    val0, val1, val2 = row
+#    # Create new row1 (0->0, 1->2, 2->4)
+#    row1 = np.array([val0, 2*val1, val2])
+#    # Create new row2 (the reverse relation (0_rev -> 1, 1_rev -> 3, 2_rev -> 5))
+#    row2 = np.array([val2, 1+2*val1, val0])
+#    # Add row1 and row2 to kg_new
+#    kg_new[i*2] = row1
+#    kg_new[i*2+1] = row2
+## %%
+## change the relations number and add reverse relations
+#rec_new = np.zeros((2*rec.shape[0], 3)).astype(np.uint32)
+#for i, row in enumerate(rec):
+#    # Extract values from row1
+#    val0, val1, val2 = row
+#    # Create new row1 (0->0, 1->2, 2->4)
+#    row1 = np.array([val0, 2*val1, val2])
+#    # Create new row2 (the reverse relation (0_rev -> 1, 1_rev -> 3, 2_rev -> 5))
+#    row2 = np.array([val2, 1+2*val1, val0])
+#    # Add row1 and row2 to kg_new
+#    rec_new[i*2] = row1
+#    rec_new[i*2+1] = row2
+
+#rec_train, rec_testval = split_kg(rec_new, split = 0.2)
+#
+#rec_test, rec_valid = train_test_split(rec_testval, test_size=0.5)
+## split the rec data into train, val and test
+#
+#kg_train, kg_val = split_kg(kg_new, split = 0.2)
+
+
 # %%
+rec_train, rec_testval = split_kg(rec, split = 0.3)
 
 rec_test, rec_valid = train_test_split(rec_testval, test_size=0.5)
 # split the rec data into train, val and test
-# %%
-kg_train, kg_val = split_kg(kg, split = 0.2)
 
-
+kg_train, kg_testval = split_kg(kg, split = 0.3)
+kg_test, kg_val = train_test_split(kg_testval, test_size=0.5)
 
 
 
@@ -104,7 +143,7 @@ kg_train, kg_val = split_kg(kg, split = 0.2)
 
 train = np.concatenate((rec_train, kg_train), axis = 0)
 valid = np.concatenate((kg_val, rec_valid), axis = 0)
-test = rec_test
+test = np.concatenate((rec_test, kg_test), axis = 0)
 # %%
 # delete rows of users in the test set that are not in the train set
 test = test[np.isin(test[:, 0], train[:, 0])]
@@ -118,8 +157,15 @@ with open(path + '/valid.txt.pickle', 'wb') as f:
     pickle.dump(valid, f)
 with open(path + '/test.txt.pickle', 'wb') as f:
     pickle.dump(test, f)
-
-
+# %%
+# load the train, valid and test txt.pickle files
+with open(path + '/train.txt.pickle', 'rb') as f:
+    train_loaded = pickle.load(f)
+with open(path + '/valid.txt.pickle', 'rb') as f:
+    valid_loaded = pickle.load(f)
+with open(path + '/test.txt.pickle', 'rb') as f:
+    test_loaded = pickle.load(f)
+# %%
 # %%
 files = ['train.txt.pickle', 'valid.txt.pickle', 'test.txt.pickle']
 entities, relations = set(), set()
@@ -128,8 +174,8 @@ for f in files:
     with open(file_path, 'rb') as f:
         to_read = pickle.load(f)
         for line in to_read:
-            lhs, rel, rhs = str(line[0]), str(line[1]), str(line[2])
-            print(rel)
+            #lhs, rel, rhs = str(line[0]), str(line[1]), str(line[2])
+            lhs, rel, rhs = (line[0]), (line[1]), (line[2])
             entities.add(lhs)
             entities.add(rhs)
             relations.add(rel)
@@ -157,7 +203,8 @@ for file in files:
 
         examples = []
         for line in to_read:
-            lhs, rel, rhs = str(line[0]), str(line[1]), str(line[2])
+            #lhs, rel, rhs = str(line[0]), str(line[1]), str(line[2])
+            lhs, rel, rhs = (line[0]), (line[1]), (line[2])
             lhs_id = entities_to_id[lhs]
             rhs_id = entities_to_id[rhs]
             rel_id = relations_to_id[rel]
@@ -167,12 +214,12 @@ for file in files:
             #to_skip['lhs'][(rhs_id, inv_rel_id)].add(lhs_id)
             to_skip['lhs'][(rhs_id, rel_id)].add(lhs_id)
             # Add inverse relations for training
-            #if file == 'train.txt.pickle':
-            #    #examples.append([rhs_id, inv_rel_id, lhs_id])
-            #    examples.append([rhs_id, rel_id, lhs_id])
-            #    #to_skip['rhs'][(rhs_id, inv_rel_id)].add(lhs_id)
-            #    to_skip['rhs'][(rhs_id, rel_id)].add(lhs_id)
-            #    to_skip['lhs'][(lhs_id, rel_id)].add(rhs_id)
+            if file == 'train.txt.pickle':
+            #    examples.append([rhs_id, inv_rel_id, lhs_id])
+                examples.append([rhs_id, rel_id, lhs_id])
+            #    to_skip['rhs'][(rhs_id, inv_rel_id)].add(lhs_id)
+                to_skip['rhs'][(rhs_id, rel_id)].add(lhs_id)
+                to_skip['lhs'][(lhs_id, rel_id)].add(rhs_id)
     out = open(os.path.join(path,'new'+ file), 'wb')
     pickle.dump(np.array(examples).astype('uint64'), out)
     out.close()
