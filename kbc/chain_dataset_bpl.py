@@ -12,7 +12,7 @@ class Chain():
     def __init__(self):
         # anchors are the anchor entities that are not optimisable
         # optimisable should be entities in between and the target entity
-        self.data = {'raw_chain':[], 'anchors': [], 'optimisable': [], 'user': [], 'type':None}
+        self.data = {'raw_chain':[], 'anchors': [], 'optimisable': [], 'user': [],'item': [], 'type':None}
 
 class ChaineDataset():
     def __init__(self, dataset: Dataset, threshold:int=1e6):
@@ -45,6 +45,7 @@ class ChaineDataset():
         self.type2_2chain_u = []
 
         self.type1_3chain = []
+        self.type1_4chain = []
         self.type2_3chain = []
         self.type3_3chain = []
         self.type4_3chain = []
@@ -61,13 +62,13 @@ class ChaineDataset():
             self.neighbour_relations
             self.__reverse_maps__()
 
-            #self.__type1_2chains__()
+            self.__type1_2chains__()
             self.__type2_2chains__()
-            #self.__type1_3chains__()
-            #self.__type1_4chains__()
-            #self.__type2_3chains__()
+            self.__type1_3chains__()
+            self.__type1_4chains__()
+            self.__type2_3chains__()
             self.__type3_3chains__()
-            self.__type4_3chains__()
+            self.__type4_3chains__() 
 
         except RuntimeError as e:
             print(e)
@@ -107,7 +108,7 @@ class ChaineDataset():
             # taking each triple in the test set e.g., (13, 1, 51)
             for test_triple in tqdm(self.raw_data.data['test']):
                 if test_triple[1] == self.likes_rel:
-                    print(test_triple)
+                    #print(test_triple)
                     user = test_triple[0]
                     item = test_triple[2]
                     self.users.append(user)
@@ -119,23 +120,27 @@ class ChaineDataset():
                     # item is added to answers
                     test_answers_chain_1 = [test_triple[2]]
                     # neighbour relations of the tail (answer) are the potential continuations of the chain
-                    potential_chain_cont = [(x, self.neighbour_relations[x]) for x in test_answers_chain_1]
-                    
+                    potential_chain_cont = [(x, self.neighbour_relations[x]) for x in test_answers_chain_1][:5]                    
                     # potential is a tuple of the answer and the neighbour relations of each answer
                     for potential in potential_chain_cont:
                         # x is each neighbour relation
                         # segmented_list is a list of tuples of the answer and each neighbour relation
+
                         segmented_list = [(potential[0],x) for x in potential[1] if x != self.likes_rel]
                         continuations = [ [x,self.rhs_missing[x]] for x in  segmented_list if x in self.rhs_missing]
-
                         ans_1 = [potential[0]]
 
+                        # we want to have at least 5 facts for each user, item pair
+                        if len(continuations) < 5:
+                            break
+                    
                         # raw_chains includes both parts of the chain. the first part is the original triple and the second part is the continuation of the chain
                         raw_chains = [
                             [ list(test_lhs_chain_1) +  ans_1,  [x[0][0], x[0][1], x[1]] ]
 
-                            for x in continuations
+                            for x in continuations[:5]
                         ]
+                       
                         # raw_chain: [ [user, likes, item], [item, relation, [tails]] ]
 
                         # storing raw_chains in a list of Chain objects and updating its attributes
@@ -171,7 +176,7 @@ class ChaineDataset():
         try:
             for test_triple in tqdm(self.raw_data.data['test']):
                 if test_triple[1] == self.likes_rel and test_triple[2] in self.reverse_maps:
-                    print(test_triple)
+                    #print(test_triple)
 
                     user = test_triple[0]
                     item = test_triple[2]
@@ -246,7 +251,7 @@ class ChaineDataset():
 
                 ans_2chain = [x for x in ans_2chain if x != raw_chain[0][0]]
 
-                potential_chain_cont = [(x, self.neighbour_relations[x]) for x in ans_2chain]
+                potential_chain_cont = [(x, self.neighbour_relations[x]) for x in ans_2chain][:5]
 
                 for potential in potential_chain_cont:
 
@@ -254,7 +259,9 @@ class ChaineDataset():
 
                     continuations = [ [x,self.rhs_missing[x]] for x in  segmented_list
                                      if x in self.rhs_missing]
-
+                    # we want to have at least 5 facts for each user, item pair
+                    if len(continuations) < 5:
+                        break
 
                     ans_connector = potential[0]
                     # new_chains = [[[user, likes, item], [item, relation, tail], [tail, relation, [tails]]]]
@@ -315,7 +322,7 @@ class ChaineDataset():
 
                 ans_2chain = [x for x in ans_2chain if x != raw_chain[1][0]]
 
-                potential_chain_cont = [(x, self.neighbour_relations[x]) for x in ans_2chain]
+                potential_chain_cont = [(x, self.neighbour_relations[x]) for x in ans_2chain][:5]
 
                 for potential in potential_chain_cont:
 
@@ -323,7 +330,9 @@ class ChaineDataset():
 
                     continuations = [ [x,self.rhs_missing[x]] for x in  segmented_list
                                      if x in self.rhs_missing]
-
+                    # we want to have at least 5 facts for each user, item pair
+                    if len(continuations) < 5:
+                        break
 
                     ans_connector = potential[0]
 
@@ -347,13 +356,16 @@ class ChaineDataset():
                         new_chain.data['raw_chain'] = chain
 
                         new_chain.data['anchors'].append(chain[3][0])
-                        new_chain.data['optimisable'].append(chain[0][0])
+
                         new_chain.data['optimisable'].append(chain[0][2])
                         new_chain.data['optimisable'].append(chain[1][2])
                         # IMPORTANT: this must be chain[2][2] and not chain[1][2]
                         #new_chain.data['optimisable'].append(chain[1][2])
                         new_chain.data['optimisable'].append(chain[2][2])
-                        new_chain.data['optimisable'].append(chain[3][1])
+                        new_chain.data['optimisable'].append(chain[0][0])
+
+                        new_chain.data['user'] = chain[0][0]
+                        new_chain.data['item'] = chain[0][2]
 
 
                         self.type1_4chain.append(new_chain)
@@ -378,7 +390,7 @@ class ChaineDataset():
         try:
             for test_triple in tqdm(self.raw_data.data['test']):
                 if test_triple[1] == self.likes_rel and test_triple[2] in self.reverse_maps:
-                    print(test_triple)
+                    #print(test_triple)
                     user = test_triple[0]
                     item = test_triple[2]
                     ans = item
@@ -426,6 +438,9 @@ class ChaineDataset():
 
                         new_chain.data['optimisable'].append(chain[0][2])
                         new_chain.data['optimisable'].append(chain[3][2])
+
+                        new_chain.data['user'] = chain[3][0]
+                        new_chain.data['item'] = chain[3][2]
 
                         self.type2_3chain.append(new_chain)
 
@@ -507,10 +522,12 @@ class ChaineDataset():
 
                     new_chain.data['optimisable'].append(chain[0][2])
                     new_chain.data['optimisable'].append(chain[1][2])
-                    new_chain.data['optimisable'].append(chain[3][2])
+                    new_chain.data['optimisable'].append(chain[2][2])
+                    new_chain.data['optimisable'].append(chain[3][0])
 
-                    new_chain.data['users'].append(chain[3][2])
-                    new_chain.data['items'].append(chain[3][0])
+
+                    new_chain.data['user'].append(chain[3][0])
+                    new_chain.data['item'].append(chain[3][2])
 
                     self.type3_3chain.append(new_chain)
 
@@ -533,36 +550,42 @@ class ChaineDataset():
                 # the rest is like a normal 2 i (not with item as the connector node)
 
                 raw_chain_initial = chain.data['raw_chain']
-                ans = raw_chain_initial[1][2]
+                first_part_raw = raw_chain_initial[0]
+                
+                anss = raw_chain_initial[1][2]
+                for ans in anss:
+                    second_part_raw = [raw_chain_initial[1][0], raw_chain_initial[1][1], ans]
+                
+                    #chain_top_initial = raw_chain_initial[0][2]
 
-                #chain_top_initial = raw_chain_initial[0][2]
+                    #chain_potential_predicates = self.neighbour_relations[chain_top_initial]
 
-                #chain_potential_predicates = self.neighbour_relations[chain_top_initial]
+                    #chain_potential_lhs = [(chain_top_initial,x) for x in chain_potential_predicates]
 
-                #chain_potential_lhs = [(chain_top_initial,x) for x in chain_potential_predicates]
+                    common_lhs = self.reverse_maps[ans]
 
-                common_lhs = self.reverse_maps[ans]
+                    if len(common_lhs) < 2:
+                        continue
+                    elif len(common_lhs) > 15:
+                        common_lhs = common_lhs[:15]
+                    common_lhs = [x for x in common_lhs if x[1] != self.likes_rel]
+                    common_lhs = list(itertools.combinations(common_lhs, 2))
 
-                if len(common_lhs) < 2:
-                    continue
 
-                common_lhs = [x for x in common_lhs if x[1] != self.likes_rel]
-                common_lhs = list(itertools.combinations(common_lhs, 2))
+                    common_lhs_clean = []
+                    for segments in common_lhs:
+                        for s in segments:
+                            if s + (ans,) in self.test_set:
+                                common_lhs_clean.append(segments)
+                                break
 
+                    if len(common_lhs_clean) == 0:
+                        continue
+                    elif len(common_lhs_clean) > 10:
+                        common_lhs_clean = common_lhs_clean[:10]
 
-                common_lhs_clean = []
-                for segments in common_lhs:
-                    for s in segments:
-                        if s + (ans,) in self.test_set:
-                            common_lhs_clean.append(segments)
-                            break
-                if len(common_lhs_clean) == 0:
-                    continue
-                elif len(common_lhs_clean) > 10:
-                    common_lhs_clean = common_lhs_clean[:10]
-                # raw_chains = [[tail, rel, item],[tail, rel, item],[tail, rel, item], [user, likes, item]]
-                raw_chains = [ [ list(x[0])+[ans], list(x[1])+[ans], raw_chain_initial]  for x in common_lhs_clean]
-
+                    # raw_chains = [[tail2, rel, tail1],[tail3, rel, tail1],[item, rel, tail1], [user, likes, item]]
+                    raw_chains = [ [ list(x[0])+[ans], list(x[1])+[ans], second_part_raw, first_part_raw]  for x in common_lhs_clean]
 
                 #raw_chains = [
                 #                raw_chain_initial+
@@ -584,11 +607,11 @@ class ChaineDataset():
 
 
                     new_chain.data['optimisable'].append(chain[0][2])
-                    new_chain.data['optimisable'].append(chain[2][2])
-                    new_chain.data['optimisable'].append(chain[3][2])
+                    new_chain.data['optimisable'].append(chain[2][0])
+                    new_chain.data['optimisable'].append(chain[3][0])
 
-                    new_chain.data['users'].append(chain[3][2])
-                    new_chain.data['items'].append(chain[3][0])
+                    new_chain.data['user'].append(chain[3][0])
+                    new_chain.data['item'].append(chain[3][2])
 
 
                     self.type4_3chain.append(new_chain)
