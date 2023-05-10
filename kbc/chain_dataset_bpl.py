@@ -40,7 +40,7 @@ class ChaineDataset():
         self.reverse_maps = {}
 
         self.type1_1chain = []
-        self.type1_2chain = []
+        #self.type1_2chain = []
         self.type2_2chain = []
         self.type2_2chain_u = []
 
@@ -62,7 +62,7 @@ class ChaineDataset():
             self.neighbour_relations
             self.__reverse_maps__()
 
-            self.__type1_2chains__()
+            #self.__type1_2chains__()
             self.__type2_2chains__()
             self.__type1_3chains__()
             self.__type1_4chains__()
@@ -181,18 +181,15 @@ class ChaineDataset():
                     user = test_triple[0]
                     item = test_triple[2]
                     ans = item
-                    #print(self.reverse_maps[ans])
-                    #sys.exit()
 
             #for ans in tqdm(self.reverse_maps):
-                    common_lhs = self.reverse_maps[ans]
+                    common_lhs = [x for x in self.reverse_maps[ans] if x[1]!=self.likes_rel]
                     #print(common_lhs)
                     #sys.exit()
-                    
-                    if len(common_lhs)<2:
+                    # ensuring that we'll have at least 5 facts for each user, item pair
+                    if len(common_lhs)<5:
                         continue
                     
-                    common_lhs = [x for x in common_lhs if x[1] != self.likes_rel]
                     common_lhs = list(itertools.combinations(common_lhs, 2))
 
 
@@ -396,13 +393,12 @@ class ChaineDataset():
                     ans = item
             #for ans in tqdm(self.reverse_maps):
                     
-                    common_lhs = self.reverse_maps[ans]
-
-                    if len(common_lhs)<3:
+                    common_lhs = [x for x in self.reverse_maps[ans] if x[1] != self.likes_rel]
+                    # ensure that we have at least 5 facts for each user, item pair
+                    if len(common_lhs)<6:
                         continue
                     #elif len(common_lhs) >15:
                     #    common_lhs = common_lhs[:15]
-                    common_lhs = [x for x in common_lhs if x[1] != self.likes_rel]
 
                     common_lhs = list(itertools.combinations(common_lhs, 3))
 
@@ -483,6 +479,9 @@ class ChaineDataset():
 
                 if len(common_lhs_1) >10:
                     common_lhs_1 = common_lhs_1[:10]
+                # ensure that we have at least 5 facts for each user, item pair
+                if len(common_lhs_0) + len(common_lhs_1) < 5:
+                    continue
 
 
                 potential_additions_0 = [ list(x)+[connector_node_opt0] for x in common_lhs_0]
@@ -562,13 +561,13 @@ class ChaineDataset():
 
                     #chain_potential_lhs = [(chain_top_initial,x) for x in chain_potential_predicates]
 
-                    common_lhs = self.reverse_maps[ans]
+                    common_lhs = [x for x in self.reverse_maps[ans] if x[1] != self.likes_rel]
 
-                    if len(common_lhs) < 2:
+                    if len(common_lhs) < 5:
                         continue
                     elif len(common_lhs) > 15:
                         common_lhs = common_lhs[:15]
-                    common_lhs = [x for x in common_lhs if x[1] != self.likes_rel]
+        
                     common_lhs = list(itertools.combinations(common_lhs, 2))
 
 
