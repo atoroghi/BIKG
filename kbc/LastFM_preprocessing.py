@@ -21,6 +21,7 @@ seed_everything(42)
 
 
 def split_kg(kg, split = 0.2):
+    np.random.shuffle(kg)
     num_rels = len(set(kg[:, 1]))
     num_ents = len(set(kg[:, 0]) | set(kg[:, 2]))
     test_start = int((1-split)*kg.shape[0])
@@ -36,10 +37,11 @@ def split_kg(kg, split = 0.2):
     return kg_train , kg_test
     
 #%%   
-dataset = 'LastFM'
+dataset = 'Movielens'
 from pathlib import Path
 import pickle
-path = os.path.join(os.getcwd() ,'..', 'data', dataset)
+#path = os.path.join(os.getcwd() ,'..', 'data', dataset)
+path = os.path.join(os.getcwd() , 'data', dataset)
 root = Path(path)
 print(root)
 print(os.listdir(root))    
@@ -62,6 +64,11 @@ rec = rec[:, [0,2,1]]
 #%%
 TOTAL_FB_IDS = np.max(kg) # total number of default kg pairs (# rel << # entities)
 # paths for converting data
+
+#%%
+
+rec = rec[:10000]
+
 #%%
 item2kg_path =  os.path.join(root,'rs/i2kg_map.tsv')
 emap_path = os.path.join(root,'kg/e_map.dat')
@@ -124,7 +131,7 @@ userid2fbid_map = {}
 new_ids = 0
 with open(umap_path) as f:
     for line in f:
-        #ml_id = re.search('\t(.+?)\n', line)
+        ml_id = re.search('\t(.+?)\n', line)
         if int(ml_id.group(1)) in rec[:,0]:
         #if ml_id.group(1) in rec[:,0]:
             new_ids += 1
@@ -179,6 +186,8 @@ for f in files:
             #relations.add(rel+'_reverse')
 entities_to_id = {x: i for (i, x) in enumerate(sorted(entities))}
 relations_to_id = {x: i for (i, x) in enumerate(sorted(relations))}
+id_to_entities = {i:x for (i, x) in enumerate(sorted(entities))}
+id_to_relations = {i:x for (i, x) in enumerate(sorted(relations))}
 
 
 n_relations = len(relations_to_id)
@@ -186,7 +195,7 @@ n_entities = len(entities_to_id)
 print(f'{n_entities} entities and {n_relations} relations')
 
 # %%
-for (dic, f) in zip([entities_to_id, relations_to_id], ['ent_id', 'rel_id']):
+for (dic, f) in zip([entities_to_id, relations_to_id, id_to_entities, id_to_relations], ['ent_id', 'rel_id', 'id_ent', 'id_rel']):
     pickle.dump(dic, open(os.path.join(path, f'{f}.pickle'), 'wb'))
 # %%
 to_skip = {'lhs': defaultdict(set), 'rhs': defaultdict(set)}
@@ -209,12 +218,12 @@ for file in files:
             #to_skip['lhs'][(rhs_id, inv_rel_id)].add(lhs_id)
             to_skip['lhs'][(rhs_id, rel_id)].add(lhs_id)
             # Add inverse relations for training
-            if file == 'train.txt.pickle':
-            #    examples.append([rhs_id, inv_rel_id, lhs_id])
-                examples.append([rhs_id, rel_id, lhs_id])
-            #    to_skip['rhs'][(rhs_id, inv_rel_id)].add(lhs_id)
-                to_skip['rhs'][(rhs_id, rel_id)].add(lhs_id)
-                to_skip['lhs'][(lhs_id, rel_id)].add(rhs_id)
+            #if file == 'train.txt.pickle':
+            ##    examples.append([rhs_id, inv_rel_id, lhs_id])
+            #    examples.append([rhs_id, rel_id, lhs_id])
+            ##    to_skip['rhs'][(rhs_id, inv_rel_id)].add(lhs_id)
+            #    to_skip['rhs'][(rhs_id, rel_id)].add(lhs_id)
+            #    to_skip['lhs'][(lhs_id, rel_id)].add(rhs_id)
     out = open(os.path.join(path,'new'+ file), 'wb')
     pickle.dump(np.array(examples).astype('uint64'), out)
     out.close()
@@ -256,3 +265,4 @@ out_file.close()
 out_file = open(path + '/valid_tails.pickle', 'wb')
 pickle.dump(valid_tails, out_file)
 out_file.close()
+# %%
