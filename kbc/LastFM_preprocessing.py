@@ -35,13 +35,29 @@ def split_kg(kg, split = 0.2):
     kg_test = kg_test[np.isin(kg_test[:, 0], kg_train[:, 0])]
     kg_test = kg_test[np.isin(kg_test[:, 2], kg_train[:, 2])]
     return kg_train , kg_test
+
+def add_inverse(rec, kg):
+    # make current kg rels to even numbers
+    inv_kg = kg[:,[2,1,0]]
+    kg[:,1] = kg[:,1]*2
+    inv_kg[:,1] = inv_kg[:,1]*2 + 1
+    new_kg = np.concatenate((kg, inv_kg), axis=0)
+
+    # make current rec rels to even numbers
+    new_likes_rel = np.max(new_kg[:,1]) + 1
+    rec[:,1] = new_likes_rel
+    inv_rec = rec[:,[2,1,0]]
+    inv_rec[:,1] = inv_rec[:,1] + 1
+    new_rec = np.concatenate((rec, inv_rec), axis=0)
+
+    return new_rec, new_kg
     
 #%%   
 dataset = 'Movielens'
 from pathlib import Path
 import pickle
-#path = os.path.join(os.getcwd() ,'..', 'data', dataset)
-path = os.path.join(os.getcwd() , 'data', dataset)
+path = os.path.join(os.getcwd() ,'..', 'data', dataset)
+#path = os.path.join(os.getcwd() , 'data', dataset)
 root = Path(path)
 print(root)
 print(os.listdir(root))    
@@ -122,9 +138,7 @@ while True:
 
 #%%
 
-np.save(os.path.join(root,'rs/rec_raw.npy'), rec, allow_pickle=True)
-#%%
-rec = np.load(os.path.join(root,'rs/rec_raw.npy'), allow_pickle=True)
+
 #%%
 umap_path = os.path.join(root,'rs/u_map.dat')
 userid2fbid_map = {}
@@ -141,6 +155,12 @@ with open(umap_path) as f:
 for i in range(rec.shape[0]):
     rec[i,0] = userid2fbid_map[rec[i,0]]
 NEW_USER_IDS = new_ids
+
+np.save(os.path.join(root,'rs/rec_processed.npy'), rec, allow_pickle=True)
+#%%
+#rec = np.load(os.path.join(root,'rs/rec_raw.npy'), allow_pickle=True)
+#%%
+rec, kg = add_inverse(rec, kg)
 
 # %%
 rec_train, rec_testval = split_kg(rec, split = 0.3)
@@ -204,26 +224,42 @@ for file in files:
     file_path = os.path.join(path, file)
     with open(file_path, 'rb') as f:
         to_read = pickle.load(f)
-
         examples = []
         for line in to_read:
-            #lhs, rel, rhs = str(line[0]), str(line[1]), str(line[2])
             lhs, rel, rhs = (line[0]), (line[1]), (line[2])
             lhs_id = entities_to_id[lhs]
             rhs_id = entities_to_id[rhs]
             rel_id = relations_to_id[rel]
-            #inv_rel_id = relations_to_id[rel + '_reverse']
             examples.append([lhs_id, rel_id, rhs_id])
-            to_skip['rhs'][(lhs_id, rel_id)].add(rhs_id)
-            #to_skip['lhs'][(rhs_id, inv_rel_id)].add(lhs_id)
-            to_skip['lhs'][(rhs_id, rel_id)].add(lhs_id)
-            # Add inverse relations for training
-            #if file == 'train.txt.pickle':
-            ##    examples.append([rhs_id, inv_rel_id, lhs_id])
-            #    examples.append([rhs_id, rel_id, lhs_id])
-            ##    to_skip['rhs'][(rhs_id, inv_rel_id)].add(lhs_id)
-            #    to_skip['rhs'][(rhs_id, rel_id)].add(lhs_id)
-            #    to_skip['lhs'][(lhs_id, rel_id)].add(rhs_id)
+            # this is a forward triple
+            if rel_id % 2 == 0:
+                to_skip['rhs'][(lhs_id, rel_id)].add(rhs_id)
+                to_skip['lhs'][(rhs_id, rel_id + 1)].add(lhs_id)
+            else:
+                continue
+            
+
+
+        ##examples = []
+        #for line in to_read:
+        #    #lhs, rel, rhs = str(line[0]), str(line[1]), str(line[2])
+        #    lhs, rel, rhs = (line[0]), (line[1]), (line[2])
+        #    lhs_id = entities_to_id[lhs]
+        #    rhs_id = entities_to_id[rhs]
+        #    rel_id = relations_to_id[rel]
+        #    #inv_rel_id = relations_to_id[rel + '_reverse']
+        #    #inv_rel_id = relations_to_id[rel*2+1]
+        #    examples.append([lhs_id, rel_id, rhs_id])
+        #    to_skip['rhs'][(lhs_id, rel_id)].add(rhs_id)
+        #    to_skip['lhs'][(rhs_id, inv_rel_id)].add(lhs_id)
+        #    #to_skip['lhs'][(rhs_id, rel_id)].add(lhs_id)
+        #    # Add inverse relations for training
+        #    if file == 'train.txt.pickle':
+        #        examples.append([rhs_id, inv_rel_id, lhs_id])
+        #    #    examples.append([rhs_id, rel_id, lhs_id])
+        #        to_skip['rhs'][(rhs_id, inv_rel_id)].add(lhs_id)
+        #    #    to_skip['rhs'][(rhs_id, rel_id)].add(lhs_id)
+        #        to_skip['lhs'][(lhs_id, rel_id)].add(rhs_id)
     out = open(os.path.join(path,'new'+ file), 'wb')
     pickle.dump(np.array(examples).astype('uint64'), out)
     out.close()
