@@ -36,8 +36,9 @@ def split_kg(kg, split = 0.2):
     kg_test = kg_test[np.isin(kg_test[:, 2], kg_train[:, 2])]
     return kg_train , kg_test
 #%%
-#dataset = 'amazon-book'
-dataset = 'yelp2018'
+dataset = 'AmazonBook'
+#dataset = 'yelp2018'
+#dataset = 'last-fm'
 from pathlib import Path
 import pickle
 path = os.path.join(os.getcwd() ,'..', 'data', dataset)
