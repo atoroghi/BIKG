@@ -56,8 +56,8 @@ def add_inverse(rec, kg):
 dataset = 'Movielens'
 from pathlib import Path
 import pickle
-path = os.path.join(os.getcwd() ,'..', 'data', dataset)
-#path = os.path.join(os.getcwd() , 'data', dataset)
+#path = os.path.join(os.getcwd() ,'..', 'data', dataset)
+path = os.path.join(os.getcwd() , 'data', dataset)
 root = Path(path)
 print(root)
 print(os.listdir(root))    
@@ -83,7 +83,7 @@ TOTAL_FB_IDS = np.max(kg) # total number of default kg pairs (# rel << # entitie
 
 #%%
 
-rec = rec[:10000]
+#rec = rec[:10000]
 
 #%%
 item2kg_path =  os.path.join(root,'rs/i2kg_map.tsv')
