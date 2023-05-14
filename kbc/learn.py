@@ -108,6 +108,8 @@ def kbc_model_load(model_path):
 	identifiers = identifiers.split('-')
 
 	dataset_name, timestamp = identifiers[0].strip(), identifiers[-1][:-3].strip()
+	if "MOvie" in dataset_name:
+		dataset_name = "Movielens"
 	if "YAGO" in dataset_name:
 		dataset_name = "YAGO3-10"
 	if 'FB15k' and '237' in identifiers:
@@ -197,7 +199,7 @@ def dataset_to_query(model, dataset_name, dataset_mode):
 if __name__ == "__main__":
 
 	modes = ['train', 'load']
-	big_datasets = ['FB15K', 'WN', 'WN18RR', 'FB237', 'YAGO3-10', "Bio"]
+	big_datasets = ['FB15K', 'WN', 'WN18RR', 'FB237', 'YAGO3-10', "Bio", 'Movielens']
 	datasets = big_datasets
 
 

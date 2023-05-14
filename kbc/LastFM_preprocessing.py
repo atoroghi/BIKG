@@ -38,18 +38,18 @@ def split_kg(kg, split = 0.2):
 
 def add_inverse(rec, kg):
     # make current kg rels to even numbers
-    inv_kg = kg[:,[2,1,0]]
+    #inv_kg = kg[:,[2,1,0]]
     kg[:,1] = kg[:,1]*2
-    inv_kg[:,1] = inv_kg[:,1]*2 + 1
-    new_kg = np.concatenate((kg, inv_kg), axis=0)
-
+    #inv_kg[:,1] = inv_kg[:,1]*2 + 1
+    #new_kg = np.concatenate((kg, inv_kg), axis=0)
+    new_kg = kg
     # make current rec rels to even numbers
-    new_likes_rel = np.max(new_kg[:,1]) + 1
+    new_likes_rel = np.max(new_kg[:,1]) + 2
     rec[:,1] = new_likes_rel
-    inv_rec = rec[:,[2,1,0]]
-    inv_rec[:,1] = inv_rec[:,1] + 1
-    new_rec = np.concatenate((rec, inv_rec), axis=0)
-
+    #inv_rec = rec[:,[2,1,0]]
+    #inv_rec[:,1] = inv_rec[:,1] + 1
+    #new_rec = np.concatenate((rec, inv_rec), axis=0)
+    new_rec = rec
     return new_rec, new_kg
     
 #%%   
@@ -203,6 +203,7 @@ for f in files:
             entities.add(lhs)
             entities.add(rhs)
             relations.add(rel)
+            relations.add(rel+1)
             #relations.add(rel+'_reverse')
 entities_to_id = {x: i for (i, x) in enumerate(sorted(entities))}
 relations_to_id = {x: i for (i, x) in enumerate(sorted(relations))}
@@ -231,12 +232,13 @@ for file in files:
             rhs_id = entities_to_id[rhs]
             rel_id = relations_to_id[rel]
             examples.append([lhs_id, rel_id, rhs_id])
-            # this is a forward triple
-            if rel_id % 2 == 0:
-                to_skip['rhs'][(lhs_id, rel_id)].add(rhs_id)
-                to_skip['lhs'][(rhs_id, rel_id + 1)].add(lhs_id)
-            else:
-                continue
+            to_skip['rhs'][(lhs_id, rel_id)].add(rhs_id)
+            to_skip['lhs'][(rhs_id, rel_id+1)].add(lhs_id)
+
+            if file == 'train.txt.pickle':
+                examples.append([rhs_id, rel_id+1, lhs_id])
+                to_skip['rhs'][(rhs_id, rel_id+1)].add(lhs_id)
+                to_skip['lhs'][(lhs_id, rel_id)].add(rhs_id)
             
 
 

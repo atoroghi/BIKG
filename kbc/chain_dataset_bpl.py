@@ -73,10 +73,10 @@ class ChaineDataset():
             self.__type1_2chains__()
             self.__type2_2chains__()
             self.__type1_3chains__()
-            self.__type1_4chains__()
-            self.__type2_3chains__()
-            self.__type3_3chains__()
-            self.__type4_3chains__() 
+            #self.__type1_4chains__()
+            #self.__type2_3chains__()
+            #self.__type3_3chains__()
+            #self.__type4_3chains__() 
 
         except RuntimeError as e:
             print(e)
@@ -168,6 +168,8 @@ class ChaineDataset():
 
                             if len(self.type1_2chain) > self.threshold:
 
+                                    
+
                                 print("Threshold for sample amount reached")
                                 print("Finished sampling chains with legth 2 of type 1")
                                 return
@@ -216,7 +218,7 @@ class ChaineDataset():
                     # raw_chains = [[[anchor, rel, item], [anchor, rel, item], [user, likes, item]]]
                     raw_chains = [ [ list(x[0])+[ans], list(x[1])+[ans], [user,self.likes_rel, item] ]  for x in common_lhs_clean]
                     
-
+                    print(raw_chains)
                     for chain in raw_chains:
                         new_chain = Chain()
 
@@ -235,6 +237,9 @@ class ChaineDataset():
                         self.type2_2chain.append(new_chain)
 
                         if len(self.type2_2chain) > self.threshold:
+                            
+                            for chain in self.type2_2chain:
+                                print(chain.data['raw_chain'])
 
                             print("Threshold for sample amount reached")
                             print("Finished sampling chains with legth 2 of type 2")
@@ -292,7 +297,7 @@ class ChaineDataset():
                         ]
                         for x in continuations
                     ]                    
-                    
+                    print(new_chains)
 
                     for chain in new_chains:
                         new_chain = Chain()
@@ -715,7 +720,7 @@ def load_chain_data(data_path):
 
 if __name__ == "__main__":
 
-    big_datasets = ['amazon-book', 'yelp2018', 'ml-20m', 'last-fm', 'FB15k']
+    big_datasets = ['amazon-book', 'yelp2018', 'Movielens', 'last-fm', 'FB15k']
     datasets = big_datasets
 
     parser = argparse.ArgumentParser(
