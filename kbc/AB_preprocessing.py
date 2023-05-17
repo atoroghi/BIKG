@@ -58,8 +58,8 @@ def add_inverse(rec, kg):
 dataset = 'AmazonBook'
 from pathlib import Path
 import pickle
-#path = os.path.join(os.getcwd() ,'..', 'data', dataset)
-path = os.path.join(os.getcwd() , 'data', dataset)
+path = os.path.join(os.getcwd() ,'..', 'data', dataset)
+#path = os.path.join(os.getcwd() , 'data', dataset)
 root = Path(path)
 print(root)
 print(os.listdir(root))    
@@ -133,11 +133,11 @@ while True:
 i = 0
 j = 0
 while True:
-    if i == rec_items.shape[0]:
+    if i == len(rec_items_converted):
         break
-    if rec_items[i] not in kg:
-        rec_items = np.delete(rec_items, i, axis=0)
-        rec_users = np.delete(rec_users, i, axis=0)
+    if rec_items_converted[i] not in kg:
+        rec_items_converted.remove(rec_items_converted[i])
+        rec_users_kept.remove(rec_users_kept[i])
     i += 1
     j += 1
     print("2",j)
@@ -153,15 +153,19 @@ with open(umap_path) as f:
     for line in f:
         ml_id = re.search('\t(.+?)\n', line)
         #if int(ml_id.group(1)) in rec[:,0]:
-        if ml_id.group(1) in rec[:,0]:
+        if ml_id.group(1) in rec_users_kept:
             new_ids += 1
             #userid2fbid_map.update({int(ml_id.group(1)) : TOTAL_FB_IDS + new_ids})
             userid2fbid_map.update({ml_id.group(1) : TOTAL_FB_IDS + new_ids})
 # convert movielens user id's into freebase id's
-for i in range(rec.shape[0]):
-    rec[i,0] = userid2fbid_map[rec[i,0]]
+for i in range(len(rec_users_kept)):
+    rec_users_kept[i] = userid2fbid_map[rec_users_kept[i]]
 NEW_USER_IDS = new_ids
 
+#%%
+likes_rel = n_r
+rec = np.column_stack((rec_users_kept, np.full(len(rec_users_kept), n_r), rec_items_converted))
+#%%
 np.save(os.path.join(root,'rs/rec_processed.npy'), rec, allow_pickle=True)
 #%%
 #rec = np.load(os.path.join(root,'rs/rec_raw.npy'), allow_pickle=True)
