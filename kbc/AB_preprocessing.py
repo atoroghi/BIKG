@@ -132,18 +132,16 @@ while True:
 #%%
 i = 0
 j = 0
-while True:
-    if i == len(rec_items_converted):
-        break
-    if rec_items_converted[i] not in kg:
-        rec_items_converted.remove(rec_items_converted[i])
-        rec_users_kept.remove(rec_users_kept[i])
-    i += 1
-    j += 1
-    print("2",j)
+max_loop = len(rec_items_converted)
+indices_to_remove = []
+
+for item in rec_items_converted:
+    if item not in kg:
+        indices_to_remove.append(i)
 
 #%%
-
+rec_items_filtered = np.delete(rec_items_converted, indices_to_remove)
+rec_users_filtered = np.delete(rec_users_kept, indices_to_remove)
 
 #%%
 umap_path = os.path.join(root,'rs/u_map.dat')
@@ -153,18 +151,18 @@ with open(umap_path) as f:
     for line in f:
         ml_id = re.search('\t(.+?)\n', line)
         #if int(ml_id.group(1)) in rec[:,0]:
-        if ml_id.group(1) in rec_users_kept:
+        if ml_id.group(1) in rec_users_filtered:
             new_ids += 1
             #userid2fbid_map.update({int(ml_id.group(1)) : TOTAL_FB_IDS + new_ids})
             userid2fbid_map.update({ml_id.group(1) : TOTAL_FB_IDS + new_ids})
 # convert movielens user id's into freebase id's
-for i in range(len(rec_users_kept)):
-    rec_users_kept[i] = userid2fbid_map[rec_users_kept[i]]
+for i in range((rec_users_filtered.shape[0])):
+    rec_users_filtered[i] = userid2fbid_map[rec_users_filtered[i]]
 NEW_USER_IDS = new_ids
 
 #%%
 likes_rel = n_r
-rec = np.column_stack((rec_users_kept, np.full(len(rec_users_kept), n_r), rec_items_converted))
+rec = np.column_stack((rec_users_filtered, np.full(len(rec_users_filtered), n_r), rec_items_filtered))
 #%%
 np.save(os.path.join(root,'rs/rec_processed.npy'), rec, allow_pickle=True)
 #%%
@@ -182,9 +180,9 @@ kg_train, kg_testval = split_kg(kg, split = 0.3)
 kg_test, kg_val = train_test_split(kg_testval, test_size=0.5)
 
 # %%
-train = np.concatenate((rec_train, kg_train), axis = 0)
-valid = np.concatenate((kg_val, rec_valid), axis = 0)
-test = np.concatenate((rec_test, kg_test), axis = 0)
+train = np.concatenate((rec_train, kg_train), axis = 0).astype(np.int32)
+valid = np.concatenate((kg_val, rec_valid), axis = 0).astype(np.int32)
+test = np.concatenate((rec_test, kg_test), axis = 0).astype(np.int32)
 
 # delete rows of users in the test set that are not in the train set
 test = test[np.isin(test[:, 0], train[:, 0])]
