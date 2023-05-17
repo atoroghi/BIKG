@@ -58,34 +58,35 @@ def add_inverse(rec, kg):
 dataset = 'AmazonBook'
 from pathlib import Path
 import pickle
-path = os.path.join(os.getcwd() ,'..', 'data', dataset)
-#path = os.path.join(os.getcwd() , 'data', dataset)
+#path = os.path.join(os.getcwd() ,'..', 'data', dataset)
+path = os.path.join(os.getcwd() , 'data', dataset)
 root = Path(path)
 print(root)
 print(os.listdir(root))    
 kg_path = os.path.join(root, 'kg/train.dat')
 rec_path = os.path.join(root,'rs/ratings.txt')
 kg = np.genfromtxt(kg_path, delimiter='\t', dtype=np.int32)
-rec = np.genfromtxt(rec_path, delimiter='\t', dtype=np.int32)
+rec = np.genfromtxt(rec_path, delimiter='\t', dtype=None)
 #%%
 n_e = len(set(kg[:, 0]) | set(kg[:, 2]))
 print("number of entities: ", n_e)
 n_r = len(set(kg[:, 1]))
 print("number of relations: ", n_r)
 
-rec = rec[:,:3] # remove time col.
-rec[:,2] = rec[:,2] >= 4 # binary ratings, 0 if [0, 4), 1 if [4, 5] 
-rec = rec[rec[:,2] == 1] # select only positive ratings
-rec[:,2] = n_r # set redundant col to the last relationship
+rec_users = []
+rec_items = []
+for i in range(rec.shape[0]):
+    if int(rec[i][2]) >= 4:
+        rec_users.append(re.search('(?<=\')(.*?)(?=\')', str(rec[i][0])).group(0))
+        rec_items.append(re.sub("^0+", "", re.search('(?<=\')(.*?)(?=\')', str(rec[i][1])).group(0)))
 
-rec = rec[:, [0,2,1]]
 #%%
 TOTAL_FB_IDS = np.max(kg) # total number of default kg pairs (# rel << # entities)
 # paths for converting data
 
 #%%
 
-rec = rec[:10000]
+#rec_items = rec_items[:10000]
 
 #%%
 item2kg_path =  os.path.join(root,'rs/i2kg_map.tsv')
@@ -96,8 +97,7 @@ with open(item2kg_path) as f:
     for line in f:
         ml_id = re.search('(.+?)\t', line)
         fb_http = re.search('\t(.+?)\n', line)
-        #ml2fb_map.update({int(ml_id.group(1)) : fb_http.group(1)})
-        ml2fb_map.update({ml_id.group(1) : fb_http.group(1)})
+        ml2fb_map.update({re.sub("^0+", "", ml_id.group(1)) : fb_http.group(1)})
 
 #%%
 
@@ -109,39 +109,35 @@ with open(emap_path) as f:
         fb_http = re.search('\t(.+?)\n', line)
         fb2id_map.update({fb_http.group(1) : kg_id})
         id2html_map.update({kg_id : fb_http.group(1)})
-
+rec_users_kept = []
+rec_items_converted = []
 #%%
 # convert movielens id's to freebase id's
+    # convert movielens id's to freebase id's
 i = 0
 j = 0
-
 while True:
-    if i == rec.shape[0]:
+    if i == len(rec_items):
         break
-    if rec[i,2] in ml2fb_map: 
-        print(rec[i,2])
-        
+    if rec_items[i] in ml2fb_map: 
         # get correct freebase id from data
-        fb_http = ml2fb_map[rec[i,2]]
-        print(f'{fb_http}')
+        fb_http = ml2fb_map[rec_items[i]]
         fb_id = fb2id_map[fb_http]
-        print(f'{fb_id}')
-        rec[i,2] = fb_id
-        i += 1
-    # remove from rec (only use movies that are in kg)
-    else:
-        rec = np.delete(rec, i, axis=0)
-    j += 1
-    print("1",j)
+        rec_items_converted.append(fb_id)
+        rec_users_kept.append(rec_users[i])
+    i += 1
 
+    j += 1
+    print("1",j,i)
 #%%
 i = 0
 j = 0
 while True:
-    if i == rec.shape[0]:
+    if i == rec_items.shape[0]:
         break
-    if rec[i,2] not in kg:
-        rec = np.delete(rec, i, axis=0)
+    if rec_items[i] not in kg:
+        rec_items = np.delete(rec_items, i, axis=0)
+        rec_users = np.delete(rec_users, i, axis=0)
     i += 1
     j += 1
     print("2",j)

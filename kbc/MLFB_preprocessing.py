@@ -21,7 +21,6 @@ seed_everything(42)
 
 
 def split_kg(kg, split = 0.2):
-    np.random.shuffle(kg)
     num_rels = len(set(kg[:, 1]))
     num_ents = len(set(kg[:, 0]) | set(kg[:, 2]))
     test_start = int((1-split)*kg.shape[0])
@@ -35,34 +34,21 @@ def split_kg(kg, split = 0.2):
     kg_test = kg_test[np.isin(kg_test[:, 0], kg_train[:, 0])]
     kg_test = kg_test[np.isin(kg_test[:, 2], kg_train[:, 2])]
     return kg_train , kg_test
-
-def add_inverse(rec, kg):
-    # make current kg rels to even numbers
-    #inv_kg = kg[:,[2,1,0]]
-    kg[:,1] = kg[:,1]*2
-    #inv_kg[:,1] = inv_kg[:,1]*2 + 1
-    #new_kg = np.concatenate((kg, inv_kg), axis=0)
-    new_kg = kg
-    # make current rec rels to even numbers
-    new_likes_rel = np.max(new_kg[:,1]) + 2
-    rec[:,1] = new_likes_rel
-    #inv_rec = rec[:,[2,1,0]]
-    #inv_rec[:,1] = inv_rec[:,1] + 1
-    #new_rec = np.concatenate((rec, inv_rec), axis=0)
-    new_rec = rec
-    return new_rec, new_kg
+    
+    
+    
+    
+    
     
 #%%   
-#dataset = 'Movielens'
-#dataset = 'LastFM'
-dataset = 'AmazonBook'
+dataset = 'Movielens'
 from pathlib import Path
 import pickle
 path = os.path.join(os.getcwd() ,'..', 'data', dataset)
-#path = os.path.join(os.getcwd() , 'data', dataset)
 root = Path(path)
 print(root)
-print(os.listdir(root))    
+print(os.listdir(root))
+#%%
 kg_path = os.path.join(root, 'kg/train.dat')
 rec_path = os.path.join(root,'rs/ratings.txt')
 kg = np.genfromtxt(kg_path, delimiter='\t', dtype=np.int32)
@@ -80,27 +66,25 @@ rec[:,2] = n_r # set redundant col to the last relationship
 
 rec = rec[:, [0,2,1]]
 #%%
-TOTAL_FB_IDS = np.max(kg) # total number of default kg pairs (# rel << # entities)
-# paths for converting data
 
-#%%
+# kg entities and relations are from 0 to n indexed
+# we need to map the items to the same kg entities and offset the user ids
 
-rec = rec[:10000]
+# for this, we need e_map that maps each entity id to its FB id and i2kg_map.tsv that maps items to kg entities in FB id
 
-#%%
-item2kg_path =  os.path.join(root,'rs/i2kg_map.tsv')
+item2kg_path = os.path.join(root,'rs/i2kg_map.tsv')
 emap_path = os.path.join(root,'kg/e_map.dat')
+
 # maps movie lense id's to free base html links
 ml2fb_map = {}
 with open(item2kg_path) as f:
     for line in f:
         ml_id = re.search('(.+?)\t', line)
         fb_http = re.search('\t(.+?)\n', line)
-        #ml2fb_map.update({int(ml_id.group(1)) : fb_http.group(1)})
-        ml2fb_map.update({ml_id.group(1) : fb_http.group(1)})
+        ml2fb_map.update({int(ml_id.group(1)) : fb_http.group(1)})
+
 
 #%%
-
 # maps free base html links to free base id's (final format)
 id2html_map = {}
 fb2id_map = {}
@@ -113,64 +97,36 @@ with open(emap_path) as f:
 #%%
 # convert movielens id's to freebase id's
 i = 0
-j = 0
-
 while True:
     if i == rec.shape[0]:
         break
     if rec[i,2] in ml2fb_map: 
-        print(rec[i,2])
-        
         # get correct freebase id from data
         fb_http = ml2fb_map[rec[i,2]]
-        print(f'{fb_http}')
         fb_id = fb2id_map[fb_http]
-        print(f'{fb_id}')
         rec[i,2] = fb_id
         i += 1
     # remove from rec (only use movies that are in kg)
     else:
         rec = np.delete(rec, i, axis=0)
-    j += 1
-    print("1",j)
-
-#%%
-i = 0
-j = 0
-while True:
-    if i == rec.shape[0]:
-        break
-    if rec[i,2] not in kg:
-        rec = np.delete(rec, i, axis=0)
-    i += 1
-    j += 1
-    print("2",j)
 
 #%%
 
+umap_path = os.path.join(root, 'rs/u_map.dat')
 
-#%%
-umap_path = os.path.join(root,'rs/u_map.dat')
+# maps movielens user id's to freebase id's
 userid2fbid_map = {}
 new_ids = 0
 with open(umap_path) as f:
     for line in f:
         ml_id = re.search('\t(.+?)\n', line)
-        #if int(ml_id.group(1)) in rec[:,0]:
-        if ml_id.group(1) in rec[:,0]:
+        if int(ml_id.group(1)) in rec[:,0]:
             new_ids += 1
-            #userid2fbid_map.update({int(ml_id.group(1)) : TOTAL_FB_IDS + new_ids})
-            userid2fbid_map.update({ml_id.group(1) : TOTAL_FB_IDS + new_ids})
+            userid2fbid_map.update({int(ml_id.group(1)) : n_e + new_ids})
 # convert movielens user id's into freebase id's
 for i in range(rec.shape[0]):
     rec[i,0] = userid2fbid_map[rec[i,0]]
 NEW_USER_IDS = new_ids
-
-np.save(os.path.join(root,'rs/rec_processed.npy'), rec, allow_pickle=True)
-#%%
-#rec = np.load(os.path.join(root,'rs/rec_raw.npy'), allow_pickle=True)
-#%%
-rec, kg = add_inverse(rec, kg)
 
 # %%
 rec_train, rec_testval = split_kg(rec, split = 0.3)
@@ -213,12 +169,9 @@ for f in files:
             entities.add(lhs)
             entities.add(rhs)
             relations.add(rel)
-            relations.add(rel+1)
             #relations.add(rel+'_reverse')
 entities_to_id = {x: i for (i, x) in enumerate(sorted(entities))}
 relations_to_id = {x: i for (i, x) in enumerate(sorted(relations))}
-id_to_entities = {i:x for (i, x) in enumerate(sorted(entities))}
-id_to_relations = {i:x for (i, x) in enumerate(sorted(relations))}
 
 
 n_relations = len(relations_to_id)
@@ -226,8 +179,9 @@ n_entities = len(entities_to_id)
 print(f'{n_entities} entities and {n_relations} relations')
 
 # %%
-for (dic, f) in zip([entities_to_id, relations_to_id, id_to_entities, id_to_relations], ['ent_id', 'rel_id', 'id_ent', 'id_rel']):
+for (dic, f) in zip([entities_to_id, relations_to_id], ['ent_id', 'rel_id']):
     pickle.dump(dic, open(os.path.join(path, f'{f}.pickle'), 'wb'))
+
 # %%
 to_skip = {'lhs': defaultdict(set), 'rhs': defaultdict(set)}
 
@@ -235,43 +189,26 @@ for file in files:
     file_path = os.path.join(path, file)
     with open(file_path, 'rb') as f:
         to_read = pickle.load(f)
+
         examples = []
         for line in to_read:
+            #lhs, rel, rhs = str(line[0]), str(line[1]), str(line[2])
             lhs, rel, rhs = (line[0]), (line[1]), (line[2])
             lhs_id = entities_to_id[lhs]
             rhs_id = entities_to_id[rhs]
             rel_id = relations_to_id[rel]
+            #inv_rel_id = relations_to_id[rel + '_reverse']
             examples.append([lhs_id, rel_id, rhs_id])
             to_skip['rhs'][(lhs_id, rel_id)].add(rhs_id)
-            to_skip['lhs'][(rhs_id, rel_id+1)].add(lhs_id)
-
+            #to_skip['lhs'][(rhs_id, inv_rel_id)].add(lhs_id)
+            to_skip['lhs'][(rhs_id, rel_id)].add(lhs_id)
+            # Add inverse relations for training
             if file == 'train.txt.pickle':
-                examples.append([rhs_id, rel_id+1, lhs_id])
-                to_skip['rhs'][(rhs_id, rel_id+1)].add(lhs_id)
+            #    examples.append([rhs_id, inv_rel_id, lhs_id])
+                examples.append([rhs_id, rel_id, lhs_id])
+            #    to_skip['rhs'][(rhs_id, inv_rel_id)].add(lhs_id)
+                to_skip['rhs'][(rhs_id, rel_id)].add(lhs_id)
                 to_skip['lhs'][(lhs_id, rel_id)].add(rhs_id)
-            
-
-
-        ##examples = []
-        #for line in to_read:
-        #    #lhs, rel, rhs = str(line[0]), str(line[1]), str(line[2])
-        #    lhs, rel, rhs = (line[0]), (line[1]), (line[2])
-        #    lhs_id = entities_to_id[lhs]
-        #    rhs_id = entities_to_id[rhs]
-        #    rel_id = relations_to_id[rel]
-        #    #inv_rel_id = relations_to_id[rel + '_reverse']
-        #    #inv_rel_id = relations_to_id[rel*2+1]
-        #    examples.append([lhs_id, rel_id, rhs_id])
-        #    to_skip['rhs'][(lhs_id, rel_id)].add(rhs_id)
-        #    to_skip['lhs'][(rhs_id, inv_rel_id)].add(lhs_id)
-        #    #to_skip['lhs'][(rhs_id, rel_id)].add(lhs_id)
-        #    # Add inverse relations for training
-        #    if file == 'train.txt.pickle':
-        #        examples.append([rhs_id, inv_rel_id, lhs_id])
-        #    #    examples.append([rhs_id, rel_id, lhs_id])
-        #        to_skip['rhs'][(rhs_id, inv_rel_id)].add(lhs_id)
-        #    #    to_skip['rhs'][(rhs_id, rel_id)].add(lhs_id)
-        #        to_skip['lhs'][(lhs_id, rel_id)].add(rhs_id)
     out = open(os.path.join(path,'new'+ file), 'wb')
     pickle.dump(np.array(examples).astype('uint64'), out)
     out.close()
