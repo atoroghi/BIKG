@@ -53,9 +53,9 @@ def add_inverse(rec, kg):
     return new_rec, new_kg
     
 #%%   
-#dataset = 'Movielens'
+dataset = 'Movielens'
 #dataset = 'LastFM'
-dataset = 'AmazonBook'
+#dataset = 'AmazonBook'
 from pathlib import Path
 import pickle
 path = os.path.join(os.getcwd() ,'..', 'data', dataset)
@@ -85,7 +85,7 @@ TOTAL_FB_IDS = np.max(kg) # total number of default kg pairs (# rel << # entitie
 
 #%%
 
-rec = rec[:10000]
+#rec = rec[:10000]
 
 #%%
 item2kg_path =  os.path.join(root,'rs/i2kg_map.tsv')
@@ -96,8 +96,10 @@ with open(item2kg_path) as f:
     for line in f:
         ml_id = re.search('(.+?)\t', line)
         fb_http = re.search('\t(.+?)\n', line)
-        #ml2fb_map.update({int(ml_id.group(1)) : fb_http.group(1)})
-        ml2fb_map.update({ml_id.group(1) : fb_http.group(1)})
+        if dataset == 'Movielens':
+            ml2fb_map.update({int(ml_id.group(1)) : fb_http.group(1)})
+        elif dataset == 'LastFM':
+            ml2fb_map.update({ml_id.group(1) : fb_http.group(1)})
 
 #%%
 
@@ -119,20 +121,20 @@ while True:
     if i == rec.shape[0]:
         break
     if rec[i,2] in ml2fb_map: 
-        print(rec[i,2])
+        #print(rec[i,2])
         
         # get correct freebase id from data
         fb_http = ml2fb_map[rec[i,2]]
-        print(f'{fb_http}')
+        #print(f'{fb_http}')
         fb_id = fb2id_map[fb_http]
-        print(f'{fb_id}')
+        #print(f'{fb_id}')
         rec[i,2] = fb_id
         i += 1
     # remove from rec (only use movies that are in kg)
     else:
         rec = np.delete(rec, i, axis=0)
     j += 1
-    print("1",j)
+    #print("1",j)
 
 #%%
 i = 0
@@ -144,7 +146,7 @@ while True:
         rec = np.delete(rec, i, axis=0)
     i += 1
     j += 1
-    print("2",j)
+    #print("2",j)
 
 #%%
 
@@ -156,16 +158,16 @@ new_ids = 0
 with open(umap_path) as f:
     for line in f:
         ml_id = re.search('\t(.+?)\n', line)
-        #if int(ml_id.group(1)) in rec[:,0]:
-        if ml_id.group(1) in rec[:,0]:
+        if int(ml_id.group(1)) in rec[:,0]:
+        #if ml_id.group(1) in rec[:,0]:
             new_ids += 1
-            #userid2fbid_map.update({int(ml_id.group(1)) : TOTAL_FB_IDS + new_ids})
-            userid2fbid_map.update({ml_id.group(1) : TOTAL_FB_IDS + new_ids})
+            userid2fbid_map.update({int(ml_id.group(1)) : TOTAL_FB_IDS + new_ids})
+            #userid2fbid_map.update({ml_id.group(1) : TOTAL_FB_IDS + new_ids})
 # convert movielens user id's into freebase id's
 for i in range(rec.shape[0]):
     rec[i,0] = userid2fbid_map[rec[i,0]]
 NEW_USER_IDS = new_ids
-
+#%%
 np.save(os.path.join(root,'rs/rec_processed.npy'), rec, allow_pickle=True)
 #%%
 #rec = np.load(os.path.join(root,'rs/rec_raw.npy'), allow_pickle=True)
@@ -173,12 +175,12 @@ np.save(os.path.join(root,'rs/rec_processed.npy'), rec, allow_pickle=True)
 rec, kg = add_inverse(rec, kg)
 
 # %%
-rec_train, rec_testval = split_kg(rec, split = 0.3)
+rec_train, rec_testval = split_kg(rec, split = 0.5)
 
 rec_test, rec_valid = train_test_split(rec_testval, test_size=0.5)
 # split the rec data into train, val and test
 
-kg_train, kg_testval = split_kg(kg, split = 0.3)
+kg_train, kg_testval = split_kg(kg, split = 0.5)
 kg_test, kg_val = train_test_split(kg_testval, test_size=0.5)
 
 # %%
@@ -242,13 +244,20 @@ for file in files:
             rhs_id = entities_to_id[rhs]
             rel_id = relations_to_id[rel]
             examples.append([lhs_id, rel_id, rhs_id])
+            examples.append([rhs_id, rel_id+1, lhs_id])
             to_skip['rhs'][(lhs_id, rel_id)].add(rhs_id)
             to_skip['lhs'][(rhs_id, rel_id+1)].add(lhs_id)
 
-            if file == 'train.txt.pickle':
-                examples.append([rhs_id, rel_id+1, lhs_id])
-                to_skip['rhs'][(rhs_id, rel_id+1)].add(lhs_id)
-                to_skip['lhs'][(lhs_id, rel_id)].add(rhs_id)
+            to_skip['lhs'][(lhs_id, rel_id)].add(rhs_id)
+            to_skip['rhs'][(rhs_id, rel_id+1)].add(lhs_id)
+            #examples.append([lhs_id, rel_id, rhs_id])
+            #to_skip['rhs'][(lhs_id, rel_id)].add(rhs_id)
+            #to_skip['lhs'][(rhs_id, rel_id+1)].add(lhs_id)
+
+            #if file == 'train.txt.pickle':
+            #    examples.append([rhs_id, rel_id+1, lhs_id])
+            #    to_skip['rhs'][(rhs_id, rel_id+1)].add(lhs_id)
+            #    to_skip['lhs'][(lhs_id, rel_id)].add(rhs_id)
             
 
 
@@ -283,6 +292,15 @@ for kk, skip in to_skip.items():
 out = open(os.path.join(path, 'new_to_skip.pickle'), 'wb')
 pickle.dump(to_skip_final, out)
 out.close()
+# %%
+files = ['newtrain.txt.pickle', 'newvalid.txt.pickle', 'newtest.txt.pickle']
+for file in files:
+    #file_name = e.g., new_train
+    file_name = file.split('.')[0]
+    with open(os.path.join(path, file), 'rb') as f:
+        array = pickle.load(f)
+        np.savetxt(f'{file_name}.txt', array, delimiter='\t', fmt='%d')
+
 # %%
 # forming the type checking dictionaries
 all_data = np.concatenate((train, test, valid), axis = 0)
