@@ -76,10 +76,16 @@ class KBCModel(nn.Module, ABC):
             c_begin = 0
             while c_begin < self.sizes[2]:
                 b_begin = 0
+                # rhs is the embedding of all entities (not just tail part)
                 rhs = self.get_rhs(c_begin, chunk_size)
                 while b_begin < len(queries):
                     these_queries = queries[b_begin:b_begin + batch_size]
-                    q = self.get_queries(these_queries)
+
+                    # side: rhs
+                    # q = return torch.cat([0.5 * lhs[1] * rel[1],0.5 * lhs[0] * rel[0]], 1)
+                    # side: lhs
+                    # q = return torch.cat([0.5 * lhs[1] * rel[0], 0.5 * lhs[0] * rel[1]], 1)
+                    q = self.get_queries(these_queries, side)
 
                     scores = q @ rhs
                     targets = self.score(these_queries)
@@ -1641,6 +1647,7 @@ class SimplE(KBCModel):
     def get_queries_separated(self, queries: torch.Tensor):
         lhs = self.embeddings[0](queries[:, 0])
         rel = self.embeddings[1](queries[:, 1])
+        
 
         return (lhs, rel)
 
@@ -1664,16 +1671,20 @@ class SimplE(KBCModel):
 
         return (lhs, rel, rhs)
 
-    def get_queries(self, queries: torch.Tensor):
+    def get_queries(self, queries: torch.Tensor, side: str = 'rhs'):
         lhs = self.embeddings[0](queries[:, 0])
         rel = self.embeddings[1](queries[:, 1])
         lhs = lhs[:, :self.rank], lhs[:, self.rank:]
         rel = rel[:, :self.rank], rel[:, self.rank:]
 
-        return torch.cat([
-            0.5 * lhs[1] * rel[1],
-            0.5 * lhs[0] * rel[0]
-        ], 1)
+        if side == 'rhs':
+
+            return torch.cat([
+                0.5 * lhs[1] * rel[1],
+                0.5 * lhs[0] * rel[0]
+            ], 1)
+        elif side == 'lhs':
+            return torch.cat([0.5 * lhs[1] * rel[0], 0.5 * lhs[0] * rel[1]], 1)
 
     def model_type(self):
         return "SimplE"

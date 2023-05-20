@@ -28,8 +28,10 @@ def avg_both(mrrs: Dict[str, float], hits: Dict[str, torch.FloatTensor]):
 	:param hits:
 	:return:
 	"""
-	m = (mrrs['lhs'] + mrrs['rhs']) / 2.
-	h = (hits['lhs'] + hits['rhs']) / 2.
+	#m = (mrrs['lhs'] + mrrs['rhs']) / 2.
+	#h = (hits['lhs'] + hits['rhs']) / 2.
+	m = mrrs['rhs']
+	h = hits['rhs']
 	return {'MRR': m, 'hits@[1,3,10]': h}
 
 

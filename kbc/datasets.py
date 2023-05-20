@@ -63,9 +63,9 @@ class Dataset(object):
         # whether we want to evaluate missing lhs or rhs or both
         missing = [missing_eval]
         #missing eval is 'both' by default
-        #if missing_eval == 'both':
-        #    missing = ['rhs', 'lhs']
-        missing = ['rhs']
+        if missing_eval == 'both':
+            missing = ['rhs', 'lhs']
+        #missing = ['rhs']
 
         mean_reciprocal_rank = {}
         hits_at = {}
@@ -84,11 +84,11 @@ class Dataset(object):
             # for a triple [10,32,179], we also have [179,33,10] in the dataset
             # and for 'rhs' and 'lhs', we have both (10,32):179 and (179,33):10
             #so we can basically just consider the 'rhs' missing and get rid of this
-            #if m == 'lhs':
-            #    # swap the first and second column
-            #    tmp = torch.clone(q[:, 0])
-            #    q[:, 0] = q[:, 2]
-            #    q[:, 2] = tmp
+            if m == 'lhs':
+                # swap the first and second column
+                tmp = torch.clone(q[:, 0])
+                q[:, 0] = q[:, 2]
+                q[:, 2] = tmp
 #
             #    # Note: in q2b relations are labeled as
             #    # [rel1, rel1inv, rel2, rel2inv, ...]
