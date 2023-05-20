@@ -336,3 +336,26 @@ out_file = open(path + '/valid_tails.pickle', 'wb')
 pickle.dump(valid_tails, out_file)
 out_file.close()
 # %%
+
+
+# TODO: this should be mixed with the above code instead of being done separately here!
+
+with open(os.path.join(path, 'train.txt.pickle'), 'rb') as f:
+    train = pickle.load(f)
+with open(os.path.join(path, 'valid.txt.pickle'), 'rb') as f:
+    valid = pickle.load(f)
+with open(os.path.join(path, 'test.txt.pickle'), 'rb') as f:
+    test = pickle.load(f)
+
+train_kg = train[train[:, 1] != 47]
+test_kg = test[test[:, 1] != 47]
+valid_kg = valid[valid[:, 1] != 47]
+
+kg_all = np.concatenate((train_kg, test_kg, valid_kg), axis = 0)
+test_with_kg = np.concatenate((test, kg_all), axis = 0)
+# %%
+with open(os.path.join(path, 'test_with_kg.txt.pickle'), 'wb') as f:
+    pickle.dump(test_with_kg, f)
+# %%
+np.savetxt('test_with_kg.txt', test_with_kg, delimiter='\t', fmt='%d')
+# %%

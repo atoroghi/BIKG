@@ -20,7 +20,7 @@ class Dataset(object):
         self.data = {}
 
         #loads train, test, and valid txt files from data/datasetname/kbc_data
-        for f in ['train', 'test', 'valid']:
+        for f in ['train', 'test', 'valid', 'test_with_kg']:
             in_file = open(str(self.root / (f + '.txt.pickle')), 'rb')
             self.data[f] = pickle.load(in_file)
 

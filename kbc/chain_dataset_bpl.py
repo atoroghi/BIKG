@@ -27,7 +27,7 @@ class ChaineDataset():
             self.rhs_missing = self.raw_data.to_skip['rhs']
             self.lhs_missing = self.raw_data.to_skip['lhs']
             # likes relation is the greatest rel in the dataset (rels begin from 0)
-            self.likes_rel = int(np.max(self.raw_data.data['train'][:,1]) - 1)
+            self.likes_rel = int(np.max(self.raw_data.data['train'][:,1]))
 
             # merges the lhs and rhs missing into one dictionary
             self.full_missing = {**self.rhs_missing, **self.lhs_missing}
@@ -36,7 +36,7 @@ class ChaineDataset():
             #self.train_set = set((tuple(triple) for triple in self.raw_data.data['train']))
             #self.valid_set = set((tuple(triple) for triple in self.raw_data.data['valid']))
             self.test_set = set((tuple(triple) for triple in self.raw_data.data['test']))
-            self.general_rels = [self.likes_rel, int(self.likes_rel + 1)]
+            self.general_rels = [self.likes_rel]
             #if 'amazon-book' in str(dataset.root):
             #    self.general_rels.append(0)
             #    self.general_rels.append(1)
@@ -71,12 +71,12 @@ class ChaineDataset():
             self.__get_neighbour_relations__()
             self.neighbour_relations
             self.__reverse_maps__()
-
-            self.__type1_2chains__()
+            # current chains: 1_2, 2_2, 2_3
+            #self.__type1_2chains__()
             #self.__type2_2chains__()
-            self.__type1_3chains__()
+            #self.__type1_3chains__()
             #self.__type1_4chains__()
-            #self.__type2_3chains__()
+            self.__type2_3chains__()
             #self.__type3_3chains__()
             #self.__type4_3chains__() 
 
@@ -93,11 +93,13 @@ class ChaineDataset():
                 if i[1] not in self.general_rels:
                     self.neighbour_relations[i[0]].append(i[1])
 
-            for i in list(self.lhs_missing.keys()):
-                if i[0] not in self.neighbour_relations:
-                    self.neighbour_relations[i[0]] = []
-                if i[1] not in self.general_rels:
-                    self.neighbour_relations[i[0]].append(i[1])
+            # for now, we're just focusing on the rhs_missing (item being the head of the triple and going from head to tail)
+            # this is the majority of the triples in the kg
+            #for i in list(self.lhs_missing.keys()):
+            #    if i[0] not in self.neighbour_relations:
+            #        self.neighbour_relations[i[0]] = []
+            #    if i[1] not in self.general_rels:
+            #        self.neighbour_relations[i[0]].append(i[1])
 
         except Exception as e:
             print(1)
@@ -117,7 +119,7 @@ class ChaineDataset():
 
         try:
             # taking each triple in the test set e.g., (13, 1, 51)
-            for test_triple in tqdm(self.raw_data.data['test']):
+            for test_triple in tqdm(self.raw_data.data['test_with_kg']):
                 if test_triple[1] == self.likes_rel and test_triple[2] in self.reverse_maps:
                     user = test_triple[0]
                     item = test_triple[2]
@@ -129,7 +131,7 @@ class ChaineDataset():
                     # first part of the chain is the user and item
                     test_lhs_chain_1 = (test_triple[0], test_triple[1])
                     #print(test_lhs_chain_1)
-                    
+                    #sys.exit()
                     
                     # item is added to answers
                     test_answers_chain_1 = [test_triple[2]]
@@ -139,12 +141,14 @@ class ChaineDataset():
                     #sys.exit()
                     # potential is a tuple of the answer and the neighbour relations of each answer
                     for potential in potential_chain_cont:
+
                         # x is each neighbour relation
                         # segmented_list is a list of tuples of the answer and each neighbour relation
 
                         segmented_list = [(potential[0],x) for x in potential[1] if (x not in self.general_rels)]
-                        continuations = [ [x,self.rhs_missing[x][:5]] for x in  segmented_list if x in self.rhs_missing]
+                        continuations = [ [x,self.rhs_missing[x][:1]] for x in  segmented_list if x in self.rhs_missing]
                         #print(continuations)
+                        #sys.exit()
                         ans_1 = [potential[0]]
                         #print(len(continuations))
                         
@@ -160,6 +164,7 @@ class ChaineDataset():
                             for x in continuations[:5]
                         ]
                         #print(raw_chains)
+                        #sys.exit()
                         # raw_chain: [ [user, likes, item], [item, relation, [tails]] ]
 
                         # storing raw_chains in a list of Chain objects and updating its attributes
@@ -178,8 +183,8 @@ class ChaineDataset():
                             self.type1_2chain.append(new_chain)
 
                             if len(self.type1_2chain) > self.threshold:
-
-                                    
+                                #for chain in  self.type1_2chain:
+                                #    print(chain.data['raw_chain']) 
 
                                 print("Threshold for sample amount reached")
                                 print("Finished sampling chains with legth 2 of type 1")
@@ -197,13 +202,13 @@ class ChaineDataset():
         try:
             #print(self.reverse_maps[17379])
             #sys.exit()
-            for test_triple in tqdm(self.raw_data.data['test']):
+            for test_triple in tqdm(self.raw_data.data['test_with_kg']):
                 if test_triple[1] == self.likes_rel and test_triple[2] in self.reverse_maps:
                     #print(test_triple)
-
+                    #sys.exit()
                     user = test_triple[0]
                     item = test_triple[2]
-                    ans = item
+                    ans = item          
                     #print(ans)
                     #print(self.reverse_maps[ans])
                     #sys.exit()
@@ -211,36 +216,43 @@ class ChaineDataset():
 
             #for ans in tqdm(self.reverse_maps):
 
-                    common_lhs = [x for x in self.reverse_maps[ans] if x[1] not in self.general_rels]
+                    # we're not using the common lhs anymore, but we're interested in the item to be the head entity
+                    #common_lhs = [x for x in self.reverse_maps[ans] if x[1] not in self.general_rels]
                     #print(common_lhs)
                     #print(len(common_lhs))
-                    #sys.exit()
+                    potential_chain_rel = [(ans, x) for x in self.neighbour_relations[ans][:5]]
+                    potential_chain_cont = []
+                    for potential_rel in potential_chain_rel:
+                        for potential_tail in self.rhs_missing[potential_rel]:
+                            potential_chain_cont.append(potential_rel + (potential_tail,)) 
+                    potential_chain_cont_clean = random.sample(potential_chain_cont, 5)
+                    #print(potential_chain_cont_clean)
                     # ensuring that we'll have at least 5 facts for each user, item pair
-                    if len(common_lhs)<5:
+                    if len(potential_chain_cont_clean)<5:
                         continue
                     
-                    common_lhs = list(itertools.combinations(common_lhs, 2))
-                    #rint(common_lhs)
+                    common_lhs_clean = list(itertools.combinations(potential_chain_cont_clean, 2))
+                    #print(common_lhs)
                     #sys.exit()
-                    common_lhs_clean = []
-                    for segments in common_lhs:
-                        for s in segments:
-                            if s + (ans,) in self.test_set:
-                                common_lhs_clean.append(segments)
-                                break
+                    # we don't care about the chains to be only from the test set anymore
+                    #common_lhs_clean = []
+                    #for segments in common_lhs:
+                    #    for s in segments:
+                    #        if s + (ans,) in self.test_set:
+                    #            common_lhs_clean.append(segments)
+                    #            break
                     
                     #print(len(common_lhs_clean))
                     #sys.exit()
                     
                     if len(common_lhs_clean) == 0:
                         continue
-                    elif len(common_lhs_clean) > 10:
-                        common_lhs_clean = common_lhs_clean[:10]
-                    #print(len(common_lhs_clean))
-                    
+                    elif len(common_lhs_clean) > 5:
+                        common_lhs_clean = random.sample(common_lhs_clean, 5)
+                    # raw_chains = [[[user, likes, item], [item, rel, anchor], [item, rel, anchor]]]
+                    raw_chains = [[[user, self.likes_rel, item], list(x[0]), list(x[1])] for x in common_lhs_clean]
 
-                    # raw_chains = [[[anchor, rel, item], [anchor, rel, item], [user, likes, item]]]
-                    raw_chains = [ [ list(x[0])+[ans], list(x[1])+[ans], [user,self.likes_rel, item] ]  for x in common_lhs_clean]
+                    #raw_chains = [ [ list(x[0])+[ans], list(x[1])+[ans], [user,self.likes_rel, item] ]  for x in common_lhs_clean]
                     
                     #print(raw_chains)
                     for chain in raw_chains:
@@ -259,12 +271,12 @@ class ChaineDataset():
                         new_chain.data['item'] = chain[2][2]
 
                         self.type2_2chain.append(new_chain)
-                        print(len(self.type2_2chain))
+                        #print(len(self.type2_2chain))
 
                         if len(self.type2_2chain) > self.threshold:
                             
-                            for chain in self.type2_2chain:
-                                print(chain.data['raw_chain'])
+                            #for chain in self.type2_2chain:
+                            #    print(chain.data['raw_chain'])
 
                             print("Threshold for sample amount reached")
                             print("Finished sampling chains with legth 2 of type 2")
@@ -279,21 +291,49 @@ class ChaineDataset():
     def __type1_3chains__(self):
         try:
             #Appending routine
-            # chain = [ [user, likes, item], [item, relation, [tails]] ]
-            #print(47150 in self.neighbour_relations.keys())
-            #print(41151 in self.neighbour_relations.keys())
-            #sys.exit()
+
             potential_chain_cont_records = {}
-            for chain in tqdm(self.type1_2chain):
-                raw_chain = chain.data['raw_chain']
-                print(raw_chain)
-                #if tuple(raw_chain[0]) not in potential_chain_cont_records:
-                potential_chain_cont_records[tuple(raw_chain[0])] = []
-                ans_2chain = raw_chain[1][2]
-                print(ans_2chain)
+            # we can't use chains 1_2 anymore because they might be insufficient for making 5 continuations
+            #for chain in tqdm(self.type1_2chain):
+            for test_triple in tqdm(self.raw_data.data['test_with_kg']):
+                if test_triple[1] == self.likes_rel and test_triple[2] in self.reverse_maps:
+                    #print(test_triple)
+                    #sys.exit()
+                    user = test_triple[0]
+                    item = test_triple[2]
+                    ans = item          
+                    #print(ans)
+                    #print(self.reverse_maps[ans])
+                    #sys.exit()
+                    # first part of the chain is the user and item
+                    test_lhs_chain_1 = (test_triple[0], test_triple[1])
+                    # item is added to answers
+                    test_answers_chain_1 = [test_triple[2]]
+                    potential_chain_cont = [(x, self.neighbour_relations[x]) for x in test_answers_chain_1]
+
+                    for potential in potential_chain_cont:
+
+                        segmented_list = [(potential[0],x) for x in potential[1] if (x not in self.general_rels)]
+                        continuations = []
+                        for x in segmented_list:
+                            if x in self.rhs_missing:
+                                potential_tails = [y for y in self.rhs_missing[x] if y in self.general_rels]
+                        
+                        # our current kg is not deep enough to make a 3p chain
+                        if len(potential_tails) == 0:
+                            continue
+                        print(potential_tails)
+                        sys.exit()
+                        continuations = [ [x,self.rhs_missing[x]] for x in  segmented_list if x in self.rhs_missing]
+                        print(continuations)
+                        sys.exit()
+
+                
                 
                 ans_2chain = [x for x in ans_2chain if x != raw_chain[0][0]]
-                #print(ans_2chain)
+                print(ans_2chain)
+                print(self.neighbour_relations[ans_2chain[0]])
+                sys.exit()
                 
                 # TODO: this should be problemmatic
                 potential_chain_cont = [random.choice([(x, list(set(self.neighbour_relations[x])-set(self.general_rels))) for x in ans_2chain])]
@@ -482,40 +522,62 @@ class ChaineDataset():
 # this is 3i
     def __type2_3chains__(self):
         try:
-            for test_triple in tqdm(self.raw_data.data['test']):
+            for test_triple in tqdm(self.raw_data.data['test_with_kg']):
                 if test_triple[1] == self.likes_rel and test_triple[2] in self.reverse_maps:
                     #print(test_triple)
                     user = test_triple[0]
                     item = test_triple[2]
                     ans = item
-            #for ans in tqdm(self.reverse_maps):
-                    
-                    common_lhs = [x for x in self.reverse_maps[ans] if x[1] not in self.general_rels]
-                    # ensure that we have at least 5 facts for each user, item pair
-                    if len(common_lhs)<6:
+
+                    potential_chain_rel = [(ans, x) for x in self.neighbour_relations[ans]]
+                    potential_chain_cont = []
+
+                    for potential_rel in potential_chain_rel:
+                        for potential_tail in self.rhs_missing[potential_rel]:
+                            potential_chain_cont.append(potential_rel + (potential_tail,)) 
+
+                    if len(potential_chain_cont)<5:
                         continue
+
+                    common_lhs_clean = list(itertools.combinations(potential_chain_cont, 3))
+
+
+                    common_lhs_clean = random.sample(common_lhs_clean, 5)
+
+            #for ans in tqdm(self.reverse_maps):
+                
+
+
+
+                    #common_lhs = [x for x in self.reverse_maps[ans] if x[1] not in self.general_rels]
+                    # ensure that we have at least 5 facts for each user, item pair
+                    #if len(common_lhs)<6:
+                    #    continue
                     #elif len(common_lhs) >15:
                     #    common_lhs = common_lhs[:15]
 
-                    common_lhs = list(itertools.combinations(common_lhs, 3))
+                    #common_lhs = list(itertools.combinations(common_lhs, 3))
+#
+                    #common_lhs_clean = []
+                    #for segments in common_lhs:
+                    #    for s in segments:
+                    #        if s + (ans,) in self.test_set:
+                    #            common_lhs_clean.append(segments)
+                    #            break
 
-                    common_lhs_clean = []
-                    for segments in common_lhs:
-                        for s in segments:
-                            if s + (ans,) in self.test_set:
-                                common_lhs_clean.append(segments)
-                                break
+                    #if len(common_lhs_clean) == 0:
+                    #    continue
 
-                    if len(common_lhs_clean) == 0:
-                        continue
+                    #elif len(common_lhs_clean) > 10:
+                    #    common_lhs_clean = common_lhs_clean[:10]
 
-                    elif len(common_lhs_clean) > 10:
-                        common_lhs_clean = common_lhs_clean[:10]
+                        # raw_chains = [[tail, rel, item],[tail, rel, item],[tail, rel, item], [user, likes, item]]
+                    # raw_chains = [[user, likes, item], [item, rel, tail], [item, rel, tail], [item, rel, tail]]
 
-                    # raw_chains = [[tail, rel, item],[tail, rel, item],[tail, rel, item], [user, likes, item]]
+                    raw_chains = [[[user, self.likes_rel, item] , list(x[0]), list(x[1]), list(x[2])] for x in common_lhs_clean]
 
-                    raw_chains = [ [ list(x[0])+[ans], list(x[1])+[ans], list(x[2]) + [ans], [user,self.likes_rel, item]]
-                                  for x in common_lhs_clean]
+                    #raw_chains = [ [ list(x[0])+[ans], list(x[1])+[ans], list(x[2]) + [ans], [user,self.likes_rel, item]]
+                    #              for x in common_lhs_clean]
 
                     for chain in raw_chains:
                         new_chain = Chain()
@@ -524,20 +586,22 @@ class ChaineDataset():
 
                         new_chain.data['raw_chain'] = chain
 
-                        new_chain.data['anchors'].append(chain[0][0])
-                        new_chain.data['anchors'].append(chain[1][0])
-                        new_chain.data['anchors'].append(chain[2][0])
+                        new_chain.data['anchors'].append(chain[1][2])
+                        new_chain.data['anchors'].append(chain[2][2])
+                        new_chain.data['anchors'].append(chain[3][2])
 
 
+                        new_chain.data['optimisable'].append(chain[0][0])
                         new_chain.data['optimisable'].append(chain[0][2])
-                        new_chain.data['optimisable'].append(chain[3][2])
 
-                        new_chain.data['user'] = chain[3][0]
-                        new_chain.data['item'] = chain[3][2]
+                        new_chain.data['user'] = chain[0][0]
+                        new_chain.data['item'] = chain[0][2]
 
                         self.type2_3chain.append(new_chain)
 
                         if len(self.type2_3chain) > self.threshold:
+                            for chain in self.type2_3chain:
+                                print(chain.data['raw_chain'])
 
                             print("Threshold for sample amount reached")
                             print("Finished sampling chains with legth 3 of type 2")
