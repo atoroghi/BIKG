@@ -172,7 +172,8 @@ np.save(os.path.join(root,'rs/rec_processed.npy'), rec, allow_pickle=True)
 #%%
 #rec = np.load(os.path.join(root,'rs/rec_raw.npy'), allow_pickle=True)
 #%%
-rec, kg = add_inverse(rec, kg)
+# we're not inversing anymore. It's incorrect with SimplE
+#rec, kg = add_inverse(rec, kg)
 
 # %%
 rec_train, rec_testval = split_kg(rec, split = 0.5)
@@ -215,7 +216,7 @@ for f in files:
             entities.add(lhs)
             entities.add(rhs)
             relations.add(rel)
-            relations.add(rel+1)
+            #relations.add(rel+1)
             #relations.add(rel+'_reverse')
 entities_to_id = {x: i for (i, x) in enumerate(sorted(entities))}
 relations_to_id = {x: i for (i, x) in enumerate(sorted(relations))}
@@ -244,12 +245,15 @@ for file in files:
             rhs_id = entities_to_id[rhs]
             rel_id = relations_to_id[rel]
             examples.append([lhs_id, rel_id, rhs_id])
-            examples.append([rhs_id, rel_id+1, lhs_id])
+            # for the inverse case
+            #examples.append([rhs_id, rel_id+1, lhs_id])
             to_skip['rhs'][(lhs_id, rel_id)].add(rhs_id)
-            to_skip['lhs'][(rhs_id, rel_id+1)].add(lhs_id)
+            # for the inverse case
+            #to_skip['lhs'][(rhs_id, rel_id+1)].add(lhs_id)
 
-            to_skip['lhs'][(lhs_id, rel_id)].add(rhs_id)
-            to_skip['rhs'][(rhs_id, rel_id+1)].add(lhs_id)
+            to_skip['lhs'][(rhs_id, rel_id)].add(lhs_id)
+            
+            #to_skip['rhs'][(rhs_id, rel_id+1)].add(lhs_id)
             #examples.append([lhs_id, rel_id, rhs_id])
             #to_skip['rhs'][(lhs_id, rel_id)].add(rhs_id)
             #to_skip['lhs'][(rhs_id, rel_id+1)].add(lhs_id)
@@ -293,7 +297,7 @@ out = open(os.path.join(path, 'new_to_skip.pickle'), 'wb')
 pickle.dump(to_skip_final, out)
 out.close()
 # %%
-files = ['newtrain.txt.pickle', 'newvalid.txt.pickle', 'newtest.txt.pickle']
+files = ['train.txt.pickle', 'valid.txt.pickle', 'test.txt.pickle']
 for file in files:
     #file_name = e.g., new_train
     file_name = file.split('.')[0]
