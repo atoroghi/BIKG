@@ -23,6 +23,24 @@ def make_batches(size: int, batch_size: int) -> List[Tuple[int, int]]:
     max_batch = int(np.ceil(size / float(batch_size)))
     res = [(i * batch_size, min(size, (i + 1) * batch_size)) for i in range(0, max_batch)]
     return res
+def create_instructions_bpl(chains,graph_type):
+    instructions = []
+    try:
+
+            if graph_type == '1_2':
+                instructions.append("hop_0_1")
+
+            elif graph_type == '2_2':
+                instructions.append("intersect_0_1_2")
+            elif graph_type == '2_3':
+                instructions.append("intersect_0_1_2_3")
+            else:
+                raise NotImplementedError
+
+    except RuntimeError as e:
+        print(e)
+        return instructions
+    return instructions
 
 
 def create_instructions(chains):
@@ -40,8 +58,6 @@ def create_instructions(chains):
                 prev_end = chain[-1]
                 start_flag = False
                 continue
-
-
             if prev_end == chain[0]:
                 instructions.append(f"hop_{chain_ind-1}_{chain_ind}")
                 prev_end = chain[-1]
@@ -86,7 +102,6 @@ def create_instructions(chains):
 
             else:
                 ans.append(inst)
-
         instructions = ans
 
     except RuntimeError as e:
@@ -165,7 +180,7 @@ class DynKBCSingleton:
     def set_attr(self, raw, kbc, chains, parts, target_ids_hard, keys_hard,
                  target_ids_complete, keys_complete,chain_instructions,
                  graph_type, lhs_norm, cuda, ent_id2fb, rel_id2fb, fb2name,
-                possible_heads_emb, possible_tails_emb):
+                possible_heads_emb, possible_tails_emb, users, items, id_ent):
         self.raw = raw
         self.kbc = kbc
         self.chains = chains
@@ -188,12 +203,15 @@ class DynKBCSingleton:
         self.fb2name = fb2name
         self.possible_heads_emb = possible_heads_emb
         self.possible_tails_emb = possible_tails_emb
+        self.users = users
+        self.items = items
+        self.id_ent = id_ent
         self.__instance = self
 
     def __init__(self,raw = None, kbc = None, chains = None , parts = None, \
     target_ids_hard = None, keys_hard = None, target_ids_complete = None, keys_complete = None, \
     lhs_norm = None, chain_instructions = None, graph_type = None, cuda = None, possible_heads_emb=None,
-    possible_tails_emb = None):
+    possible_tails_emb = None, users = None, items = None, id_ent = None):
         """ Virtually private constructor. """
         if DynKBCSingleton.__instance != None:
             raise Exception("This class is a singleton!")
@@ -215,12 +233,62 @@ class DynKBCSingleton:
             DynKBCSingleton.chain_instructions = chain_instructions
             DynKBCSingleton.possible_heads_emb = possible_heads_emb
             DynKBCSingleton.possible_tails_emb = possible_tails_emb
+            DynKBCSingleton.users = users
+            DynKBCSingleton.items = items
+            DynKBCSingleton.id_ent = id_ent
             DynKBCSingleton.__instance = self
 
     def set_eval_complete(self,target_ids_complete, keys_complete):
             self.target_ids_complete = target_ids_complete
             self.keys_complete = keys_complete
             self.__instance = self
+
+def get_keys_and_targets_bpl(parts, users, items, graph_type):
+    if len(parts) == 1:
+        part1 = parts[0]
+        part2 = None
+        part3 = None
+        part4 = None
+    if len(parts) == 2:
+        part1, part2 = parts
+        part3 = None
+        part4 = None
+    if len(parts) == 3:
+        part1, part2, part3 = parts
+        part4 = None
+    elif len(parts) == 4:
+        part1, part2, part3, part4 = parts
+
+    # "keys" are the unique chain queries we want to answer in a str format(e.g., (21,2,4)_(5,6,8))
+    # target_ids is a dict that maps these keys to the target id of the chain query
+    user_ids = {}
+    item_ids = {}
+    keys = []
+
+    for chain_iter in range(len(part1)):
+        # parts of the chain are concatenated to form a key
+        if len(parts) == 4:
+            key = part1[chain_iter] + part2[chain_iter] + part3[chain_iter] + part4[chain_iter]
+        if len(parts) == 3:
+            key = part1[chain_iter] + part2[chain_iter] + part3[chain_iter]
+        if len(parts) == 2:
+            key = part1[chain_iter] + part2[chain_iter]
+        elif len(parts) == 1:
+            key = part1[chain_iter]
+        # then joins the key elements with underscores to create a string.
+        key = '_'.join(str(e) for e in key)
+
+        if key not in user_ids:
+            user_ids[key] = []
+            keys.append(key)
+        if key not in item_ids:
+            item_ids[key] = []
+            keys.append(key)
+
+        user_ids[key] = users[chain_iter]
+        item_ids[key] = items[chain_iter]
+
+    return user_ids, item_ids, keys
 
 
 def get_keys_and_targets(parts, targets, graph_type):
@@ -260,8 +328,8 @@ def get_keys_and_targets(parts, targets, graph_type):
 
 # takes each part of the chains and gets embeddings for each part
 
-def preload_env(kbc_path, dataset, graph_type, mode="hard", kg_path=None,
-                explain=False, valid_heads=None, valid_tails=None):
+def preload_env(kbc_path, dataset, graph_type, mode="complete", kg_path=None,
+                explain=False, valid_heads=None, valid_tails=None, id_ent=None):
 
     from kbc.learn import kbc_model_load
 
@@ -350,36 +418,55 @@ def preload_env(kbc_path, dataset, graph_type, mode="hard", kg_path=None,
             type1_2chain = []
             for i in range(len(raw)):
                 type1_2chain.append(raw[i].data)
+
             # type 1_2 chain has two parts. it separates them
+            # part1: [[user, likes, item]], part2: [[item, rel, tail]]
             part1 = [x['raw_chain'][0] for x in type1_2chain]
             part2 = [x['raw_chain'][1] for x in type1_2chain]
-
 
             flattened_part1 =[]
             flattened_part2 = []
 
             # [[A,b,C][C,d,[Es]]
 
-            targets = []
+            #targets = []
+            #for chain_iter in range(len(part2)):
+            #    # masks the target node (tail of the second part of the chain) with some code so that it is not used in the embedding
+            #    # but part 1 remains the same
+            #    flattened_part2.append([part2[chain_iter][0],part2[chain_iter][1],-(chain_iter+1234)])
+            #    flattened_part1.append(part1[chain_iter])
+            #    # that target node is added to the targets list
+            #    targets.append(part2[chain_iter][2])
+
+            items = []
+            users = []
             for chain_iter in range(len(part2)):
                 # masks the target node (tail of the second part of the chain) with some code so that it is not used in the embedding
                 # but part 1 remains the same
-                flattened_part2.append([part2[chain_iter][0],part2[chain_iter][1],-(chain_iter+1234)])
-                flattened_part1.append(part1[chain_iter])
-                # that target node is added to the targets list
-                targets.append(part2[chain_iter][2])
+                flattened_part2.append([-(chain_iter+1234) ,part2[chain_iter][1], part2[chain_iter][2][0]])
+                flattened_part1.append([part1[chain_iter][0], part1[chain_iter][1], -(chain_iter+1234)])
+                # let's consider the item node as the target node for now
+                items.append(part1[chain_iter][2])
+                users.append(part1[chain_iter][0])
 
             part1 = flattened_part1
             part2 = flattened_part2
-            targets = targets
+
+            # part1 = [115359, 47, -1234]
+            # part2 = [-1234, 28, 17745]
+
+            #targets = targets
+            users = users
+            items = items
 
             # "keys" is a list contanits unique chain queries we want to answer in a str format(e.g., (21,2,-1)_(-1,6,-1234))
             # target_ids is a dict that maps these keys to the target id of the chain query
-            target_ids, keys = get_keys_and_targets([part1, part2], targets, graph_type)
-            # IDK why chain_instructions are useful. for this chain type it's ['hop_0_1']
+            #target_ids, keys = get_keys_and_targets([part1, part2], targets, graph_type)
+            user_ids, item_ids, keys = get_keys_and_targets_bpl([part1, part2], users, items, graph_type)
+            # for this chain type it's ['hop_0_1']
             if not chain_instructions:
-                chain_instructions = create_instructions([part1[0], part2[0]])
-
+                chain_instructions = create_instructions_bpl([part1[0], part2[0]], graph_type)
+            
             device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
             part1 = np.array(part1)
@@ -387,17 +474,19 @@ def preload_env(kbc_path, dataset, graph_type, mode="hard", kg_path=None,
 
             part2 = np.array(part2)
             part2 = torch.tensor(part2.astype('int64'), device=device)
+
             # gets the embeddings for part 1s of the chain. It is a tuple of three tensors. each tensor is 5000* (emb_dim)
-            # if the model is simple or complex, it's 5000* (2*emb_dim). chain1[2] is None.
+            # if the model is simple or complex, it's 5000* (2*emb_dim). chain1[0] is None. (now chain1[0] and chain1[2] are none)
             chain1 = kbc.model.get_full_embeddigns(part1)
             # gets the embeddings for part 2s of the chain (remember that the target node is masked)
+            # now chain2[0] is None
             chain2 = kbc.model.get_full_embeddigns(part2)
             #lhs_norm seems not to be used
-            lhs_norm = 0.0
-            for lhs_emb in chain1[0]:
-                lhs_norm+=torch.norm(lhs_emb)
+            #lhs_norm = 0.0
+            #for lhs_emb in chain1[0]:
+            #    lhs_norm+=torch.norm(lhs_emb)
 
-            lhs_norm/= len(chain1[0])
+            #lhs_norm/= len(chain1[0])
             # chains is the list of embeddings of nodes in chain parts
             chains = [chain1,chain2]
             # parts is the list of the nodes themselves (node ids)
@@ -414,9 +503,12 @@ def preload_env(kbc_path, dataset, graph_type, mode="hard", kg_path=None,
                 # we also need the relation of the second part of the chain for possible tails
                 rel_2 = int(part2[i][1])
                 # gets the possible heads and tails of it
-                possible_heads = torch.tensor(np.array(valid_heads[rel]).astype('int64') , device=device)
+                valid_heads_ent = [id_ent[x] for x in valid_heads[rel]]
+                possible_heads = torch.tensor(np.array(valid_heads_ent).astype('int64') , device=device)
                 # possible tails of this relation should also be possible heads of the rel of the second part of the chain
-                possible_tails = torch.tensor(np.intersect1d(np.array(valid_tails[rel]), np.array(valid_heads[rel_2])).astype('int64'), device=device)
+                intersect = np.intersect1d(np.array(valid_tails[rel]), np.array(valid_heads[rel_2]))
+                valid_tails_ent = [id_ent[x] for x in intersect]
+                possible_tails = torch.tensor(np.array(valid_tails_ent).astype('int64'), device=device)
                 possible_heads_embeddings = kbc.model.entity_embeddings(possible_heads)
                 possible_tails_embeddings = kbc.model.entity_embeddings(possible_tails)
 
@@ -434,8 +526,8 @@ def preload_env(kbc_path, dataset, graph_type, mode="hard", kg_path=None,
 
             for i in range(part2.shape[0]):
                 rel = int(part2[i][1])
-                
-                possible_tails = torch.tensor(np.array(valid_tails[rel]).astype('int64'), device=device)
+                valid_tails_ent = [id_ent[x] for x in valid_tails[rel]]
+                possible_tails = torch.tensor(np.array(valid_tails_ent).astype('int64'), device=device)
                 possible_tails_embeddings = kbc.model.entity_embeddings(possible_tails)
 
                 mean_tail = torch.mean(possible_tails_embeddings, dim=0)
@@ -452,50 +544,60 @@ def preload_env(kbc_path, dataset, graph_type, mode="hard", kg_path=None,
             for i in range(len(raw)):
                 type2_2chain.append(raw[i].data)
 
-
+            # part1: [[user, likes, item]], part2: [[item, rel, tail]], part3: [[item, rel, tail]]
             part1 = [x['raw_chain'][0] for x in type2_2chain]
             part2 = [x['raw_chain'][1] for x in type2_2chain]
+            part3 = [x['raw_chain'][2] for x in type2_2chain]
 
 
             flattened_part1 =[]
             flattened_part2 = []
+            flattened_part3 = []
 
-            targets = []
+            users = []
+            items = []
             for chain_iter in range(len(part2)):
-                flattened_part2.append([part2[chain_iter][0],part2[chain_iter][1],-(chain_iter+1234)])
+                flattened_part3.append([-(chain_iter+1234),part3[chain_iter][1],part3[chain_iter][2]])
+                flattened_part2.append([-(chain_iter+1234),part2[chain_iter][1],part2[chain_iter][2]])
                 flattened_part1.append([part1[chain_iter][0],part1[chain_iter][1],-(chain_iter+1234)])
-                targets.append(part2[chain_iter][2])
+                items.append(part1[chain_iter][2])
+                users.append(part1[chain_iter][0])
 
             part1 = flattened_part1
             part2 = flattened_part2
-            targets = targets
+            part3 = flattened_part3
+            users = users
+            items = items
 
-            target_ids, keys = get_keys_and_targets([part1, part2], targets, graph_type)
+            user_ids, item_ids, keys = get_keys_and_targets_bpl([part1, part2, part3], users, items, graph_type)
 
             if not chain_instructions:
-                chain_instructions = create_instructions([part1[0], part2[0]])
+                chain_instructions = create_instructions_bpl([part1[0], part2[0], part3[0]], graph_type)
 
             device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
             part1 = np.array(part1)
-
             part1 = torch.tensor(part1.astype('int64'), device=device)
 
             part2 = np.array(part2)
             part2 = torch.tensor(part2.astype('int64'), device=device)
 
+            part3 = np.array(part3)
+            part3 = torch.tensor(part3.astype('int64'), device=device)
+
             chain1 = kbc.model.get_full_embeddigns(part1)
             chain2 = kbc.model.get_full_embeddigns(part2)
+            chain3 = kbc.model.get_full_embeddigns(part3)
 
             lhs_norm = 0.0
             for lhs_emb in chain1[0]:
                 lhs_norm+=torch.norm(lhs_emb)
 
             lhs_norm/= len(chain1[0])
-            chains = [chain1,chain2]
-            parts = [part1,part2]
+            chains = [chain1,chain2, chain3]
+            parts = [part1, part2, part3]
             # from here on, my code for getting the mean of the head and tail for each part
-            # for part 1:
+            # for part 1 (user, likes, item):
             part1_heads_emb = torch.zeros(chain1[0].shape, device=device)
             part1_tails_emb = torch.zeros(chain1[0].shape, device=device)
 
@@ -504,8 +606,13 @@ def preload_env(kbc_path, dataset, graph_type, mode="hard", kg_path=None,
                 rel_1 = int(part1[i][1])
                 # we also need the relation of the second part of the chain for possible tails
                 rel_2 = int(part2[i][1])
+                rel_3 = int(part3[i][1])
                 # possible tails must be possible for both relations
-                possible_tails = torch.tensor(np.intersect1d(np.array(valid_tails[rel_1]), np.array(valid_tails[rel_2])).astype('int64'), device=device)
+                first_intersect = np.intersect1d(np.array(valid_tails[rel_1]), np.array(valid_tails[rel_2]))
+                second_intersect = np.intersect1d(np.array(valid_tails[rel_3]), first_intersect)
+                valid_tails_ent = [id_ent[x] for x in second_intersect]
+
+                possible_tails = torch.tensor(np.intersect1d(valid_tails_ent).astype('int64'), device=device)
                 possible_tails_embeddings = kbc.model.entity_embeddings(possible_tails)
                 # get means of the tails
                 mean_tail = torch.mean(possible_tails_embeddings, dim=0)
@@ -657,6 +764,7 @@ def preload_env(kbc_path, dataset, graph_type, mode="hard", kg_path=None,
                 possible_heads = torch.tensor(np.array(valid_heads[rel]).astype('int64') , device=device)
                 # possible tails of this relation should also be possible heads of the rel of the second part of the chain
                 possible_tails = torch.tensor(np.intersect1d(np.array(valid_tails[rel]), np.array(valid_heads[rel_2])).astype('int64'), device=device)
+                
                 possible_heads_embeddings = kbc.model.entity_embeddings(possible_heads)
                 possible_tails_embeddings = kbc.model.entity_embeddings(possible_tails)
 
@@ -707,31 +815,38 @@ def preload_env(kbc_path, dataset, graph_type, mode="hard", kg_path=None,
             type2_3chain = []
             for i in range(len(raw)):
                 type2_3chain.append(raw[i].data)
-
+            # part1: [[user, likes, item]], part2: [[item, rel, tail]], part3: [[item, rel, tail]], part4: [[item, rel, tail]]
             part1 = [x['raw_chain'][0] for x in type2_3chain]
             part2 = [x['raw_chain'][1] for x in type2_3chain]
             part3 = [x['raw_chain'][2] for x in type2_3chain]
+            part4 = [x['raw_chain'][3] for x in type2_3chain]
 
-            flattened_part1 =[]
+            flattened_part1 = []
             flattened_part2 = []
             flattened_part3 = []
+            flattened_part4 = []
 
-            targets = []
+            users = []
+            items = []
             for chain_iter in range(len(part3)):
-                flattened_part3.append([part3[chain_iter][0],part3[chain_iter][1],-(chain_iter+1234)])
-                flattened_part2.append([part2[chain_iter][0],part2[chain_iter][1],-(chain_iter+1234)])
+                flattened_part4.append([-(chain_iter+1234),part4[chain_iter][1],part4[chain_iter][2]])
+                flattened_part3.append([-(chain_iter+1234),part3[chain_iter][1],part3[chain_iter][2]])
+                flattened_part2.append([-(chain_iter+1234),part2[chain_iter][1],part2[chain_iter][2]])
                 flattened_part1.append([part1[chain_iter][0],part1[chain_iter][1],-(chain_iter+1234)])
-                targets.append(part3[chain_iter][2])
+                items.append(part1[chain_iter][2])
+                users.append(part1[chain_iter][0])
 
             part1 = flattened_part1
             part2 = flattened_part2
             part3 = flattened_part3
-            targets = targets
+            part4 = flattened_part4
+            users = users
+            items = items
 
-            target_ids, keys = get_keys_and_targets([part1, part2, part3], targets, graph_type)
+            user_ids, item_ids, keys = get_keys_and_targets_bpl([part1, part2, part3, part4], users, items, graph_type)
 
             if not chain_instructions:
-                chain_instructions = create_instructions([part1[0], part2[0], part3[0]])
+                chain_instructions = create_instructions_bpl([part1[0], part2[0], part3[0], part4[0]], graph_type)
 
             device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
@@ -744,9 +859,13 @@ def preload_env(kbc_path, dataset, graph_type, mode="hard", kg_path=None,
             part3 = np.array(part3)
             part3 = torch.tensor(part3.astype('int64'), device=device)
 
+            part4 = np.array(part4)
+            part4 = torch.tensor(part4.astype('int64'), device=device)
+
             chain1 = kbc.model.get_full_embeddigns(part1)
             chain2 = kbc.model.get_full_embeddigns(part2)
             chain3 = kbc.model.get_full_embeddigns(part3)
+            chain4 = kbc.model.get_full_embeddigns(part4)
 
 
             lhs_norm = 0.0
@@ -755,8 +874,8 @@ def preload_env(kbc_path, dataset, graph_type, mode="hard", kg_path=None,
 
             lhs_norm/= len(chain1[0])
 
-            chains = [chain1,chain2,chain3]
-            parts = [part1,part2,part3]
+            chains = [chain1,chain2,chain3,chain4]
+            parts = [part1,part2,part3,part4]
             # from here on, my code for getting the mean of the head and tail for each part
             part1_heads_emb = torch.zeros(chain1[0].shape, device=device)
             part1_tails_emb = torch.zeros(chain1[0].shape, device=device)
@@ -767,9 +886,12 @@ def preload_env(kbc_path, dataset, graph_type, mode="hard", kg_path=None,
                 # we also need the relation of the second part of the chain for possible tails
                 rel_2 = int(part2[i][1])
                 rel_3 = int(part3[i][1])
+                rel_4 = int(part4[i][1])
                 first_intersect = np.intersect1d(np.array(valid_tails[rel_1]), np.array(valid_tails[rel_2])).astype('int64')
                 second_intersect = np.intersect1d(first_intersect, np.array(valid_tails[rel_3])).astype('int64')
-                possible_tails = torch.tensor(second_intersect, device=device)
+                third_intersect = np.intersect1d(second_intersect, np.array(valid_tails[rel_4])).astype('int64')
+                valid_tails_ent = [id_ent[x] for x in third_intersect]
+                possible_tails = torch.tensor(valid_tails_ent, device=device)
                 possible_tails_embeddings = kbc.model.entity_embeddings(possible_tails)
                 # gets the mean of the tails
                 mean_tail = torch.mean(possible_tails_embeddings, dim=0)
@@ -1085,9 +1207,10 @@ def preload_env(kbc_path, dataset, graph_type, mode="hard", kg_path=None,
             else:
                 ent_id2fb, rel_id2fb, fb2name = None, None, None
 
-
+            lhs_norm = 0.0
+ 
             env.set_attr(raw, kbc, chains, parts, target_ids, keys, None, None, chain_instructions, graph_type, lhs_norm, False, ent_id2fb, rel_id2fb, fb2name,
-            possible_heads_emb, possible_tails_emb)
+            possible_heads_emb, possible_tails_emb, users, items, id_ent)
 
             # env.set_attr(kbc,chains,parts,target_ids, keys, chain_instructions , graph_type, lhs_norm)
             # def set_attr(kbc, chains, parts, target_ids_hard, keys_hard, target_ids_complete, keys_complete, chain_instructions, graph_type, lhs_norm, cuda ):

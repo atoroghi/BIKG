@@ -1,0 +1,15 @@
+import torch
+import numpy
+import pickle
+import os, sys
+
+from kbc.chain_dataset_bpl import ChaineDataset
+from kbc.chain_dataset_bpl import Chain
+from kbc.utils import QuerDAG
+from kbc.utils import preload_env
+
+def evaluate_existential(env):
+    chains, chain_instructions = env.chains, env.chain_instructions
+    nb_queries, embedding_size = chains[0][0].shape[0], chains[0][0].shape[1]
+    print(chains[0][0].shape)
+    sys.exit()

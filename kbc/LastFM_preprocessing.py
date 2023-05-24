@@ -359,3 +359,29 @@ with open(os.path.join(path, 'test_with_kg.txt.pickle'), 'wb') as f:
 # %%
 np.savetxt('test_with_kg.txt', test_with_kg, delimiter='\t', fmt='%d')
 # %%
+# Making the user likes dictionary for filtered evaluation
+
+with open(os.path.join(path, 'train.txt.pickle'), 'rb') as f:
+    train = pickle.load(f)
+with open(os.path.join(path, 'valid.txt.pickle'), 'rb') as f:
+    valid = pickle.load(f)
+with open(os.path.join(path, 'test.txt.pickle'), 'rb') as f:
+    test = pickle.load(f)
+
+train_rec = train[train[:, 1] == 47]
+test_rec = test[test[:, 1] == 47]
+valid_rec = valid[valid[:, 1] == 47]
+
+all_rec = np.concatenate((train_rec, test_rec, valid_rec), axis = 0)
+
+user_likes = {}
+for line in all_rec:
+    user = line[0]
+    item = line[2]
+    if user not in user_likes:
+        user_likes[user] = set()
+    user_likes[user].add(item)
+# %%
+out_file = open(path + '/user_likes.pickle', 'wb')
+pickle.dump(user_likes, out_file)
+# %%

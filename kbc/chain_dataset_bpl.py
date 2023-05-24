@@ -1,3 +1,5 @@
+#%%
+#%%
 from kbc.datasets import Dataset
 import itertools
 import argparse
@@ -72,8 +74,8 @@ class ChaineDataset():
             self.neighbour_relations
             self.__reverse_maps__()
             # current chains: 1_2, 2_2, 2_3
-            #self.__type1_2chains__()
-            #self.__type2_2chains__()
+            self.__type1_2chains__()
+            self.__type2_2chains__()
             #self.__type1_3chains__()
             #self.__type1_4chains__()
             self.__type2_3chains__()
@@ -183,8 +185,10 @@ class ChaineDataset():
                             self.type1_2chain.append(new_chain)
 
                             if len(self.type1_2chain) > self.threshold:
-                                #for chain in  self.type1_2chain:
-                                #    print(chain.data['raw_chain']) 
+                                print(f'1_2:{len(self.type1_2chain)}')
+                                for chain in  self.type1_2chain[:10]:
+                                    print(chain.data['raw_chain']) 
+                                sys.exit()
 
                                 print("Threshold for sample amount reached")
                                 print("Finished sampling chains with legth 2 of type 1")
@@ -274,6 +278,7 @@ class ChaineDataset():
                         #print(len(self.type2_2chain))
 
                         if len(self.type2_2chain) > self.threshold:
+                            print(f'2_2:{len(self.type2_2chain)}')
                             
                             #for chain in self.type2_2chain:
                             #    print(chain.data['raw_chain'])
@@ -600,8 +605,9 @@ class ChaineDataset():
                         self.type2_3chain.append(new_chain)
 
                         if len(self.type2_3chain) > self.threshold:
-                            for chain in self.type2_3chain:
-                                print(chain.data['raw_chain'])
+                            print((f'2_3:{len(self.type2_3chain)}'))
+                            # for chain in self.type2_3chain:
+                            #     print(chain.data['raw_chain'])
 
                             print("Threshold for sample amount reached")
                             print("Finished sampling chains with legth 3 of type 2")

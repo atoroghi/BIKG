@@ -1154,7 +1154,7 @@ class KBCModel(nn.Module, ABC):
                             arg1: Optional[Tensor],
                             arg2: Optional[Tensor],
                             candidates: int = 5,
-                            last_step=False, env: DynKBCSingleton = None) -> Tuple[Tensor, Tensor]:
+                            last_step=False, env: DynKBCSingleton = None, side: str= 'lhs') -> Tuple[Tensor, Tensor]:
 
         z_scores, z_emb, z_indices = None, None, None
 
@@ -1166,8 +1166,10 @@ class KBCModel(nn.Module, ABC):
         # scores_sp = (s, p, ?)
         # scores_sp, scores_po = self.candidates_score(rel, arg1, arg2)
         # scores = scores_sp if arg2 is None else scores_po
-
-        scores = self.forward_emb(arg1, rel)
+        if side == 'lhs':
+            scores = self.forward_emb(arg1, rel)
+        elif side == 'rhs':
+            scores = self.backward_emb(arg1, rel)
 
         if not last_step:
             # [B, K], [B, K]
@@ -1177,15 +1179,6 @@ class KBCModel(nn.Module, ABC):
             z_emb = self.entity_embeddings(z_indices)
             assert z_emb.shape[0] == batch_size
             assert z_emb.shape[2] == embedding_size
-
-            if env is not None:
-                logger = logging.getLogger('explain')
-                logger.info(f'{"Rank":<6} {"X":<30} {"Score":<8}')
-                for i in range(z_indices.shape[1]):
-                    ent_id = z_indices[0, i].item()
-                    ent_score = torch.sigmoid(z_scores[0, i]).item()
-                    logger.info(
-                        f'{i:<6} {env.fb2name[env.ent_id2fb[ent_id]]:<30} {ent_score:<8.4f}')
         else:
             z_scores = scores
 
@@ -1209,6 +1202,214 @@ class KBCModel(nn.Module, ABC):
 
     def min_max_rescale(self, x):
         return (x-torch.min(x))/(torch.max(x) - torch.min(x))
+
+
+    def query_answering_BF_Marginal_UI(self, env: DynKBCSingleton, candidates: int = 5, t_norm: str = 'min', 
+    batch_size=1, scores_normalize=0, explain=False):
+        res = None
+        if 'disj' in env.graph_type:
+            objective = self.t_conorm
+        else: 
+            objective = self.t_norm
+        parts = env.parts
+        chains, chain_instructions = env.chains, env.chain_instructions
+        nb_queries, emb_dim = chains[0][0].shape[0], chains[0][0].shape[1]
+        possible_heads_emb = env.possible_heads_emb; possible_tails_emb = env.possible_tails_emb
+
+        scores = None
+        if env.graph_type == '1_2':
+            part1 , part2 = parts[0], parts[1]
+            chain1, chain2 = chains[0], chains[1]
+            lhs_1, rel_1, rhs_1, lhs_2, rel_2, rhs_2 = part1[:,0], part1[:,1], part1[:,2], part2[:,0], part2[:,1], part2[:,2]
+            lhs_1_emb, rel_1_emb, rhs_1_emb, lhs_2_emb, rel_2_emb, rhs_2_emb = chain1[0], chain1[1], chain1[2], chain2[0], chain2[1], chain2[2]
+
+            if not 'SimplE' in str(self.model_type):
+                raise NotImplementedError
+            else:
+                for i in tqdm.tqdm(range(nb_queries // 5)):
+
+                    for j in range(5):
+                        lhs_1, rel_1, rhs_1 = lhs_1_emb[i*5+j], rel_1_emb[i*5+j], None
+                        lhs_2, rel_2, rhs_2 = None, rel_2_emb[i*5+j], rhs_2_emb[i*5+j]
+                        print(lhs_1.shape)
+                        print(lhs_2)
+                    sys.exit()
+
+        return res
+
+    def query_answering_BF_Exist(self, env: DynKBCSingleton, candidates: int = 5, t_norm: str = 'min', 
+    batch_size=1, scores_normalize=0, explain=False):
+
+        res = None
+        if 'disj' in env.graph_type:
+            objective = self.t_conorm
+        else: 
+            objective = self.t_norm
+        chains, chain_instructions = env.chains, env.chain_instructions
+        nb_queries, embedding_size = chains[0][0].shape[0], chains[0][0].shape[1]
+        scores = None
+        batches = make_batches(nb_queries, batch_size)
+        # batches = [(0, 1), (1, 2), ...)]
+        for i, batch in enumerate(tqdm.tqdm(batches)):
+            nb_branches = 1
+            nb_ent = 0
+            batch_scores = None
+            candidate_cache = {}
+            batch_size = batch[1] - batch[0]
+            dnf_flag = False
+            if 'disj' in env.graph_type:
+                dnf_flag = True
+
+
+            for inst_ind, inst in enumerate(chain_instructions):
+
+                # inst = "hop_0_1"
+                # inst_ind = 0
+                with torch.no_grad():
+                    # in fact our projection is like an intersection for the cqd (item has a fact and is 
+                    # liked by the user)
+                    if 'hop' in inst or 'inter' in inst:
+
+                        ind_1 = int(inst.split("_")[-2])
+                        ind_2 = int(inst.split("_")[-1])
+                        # indices = [0,1]
+                        indices = [ind_1, ind_2]
+
+                        if objective == self.t_norm and dnf_flag:
+                            objective = self.t_conorm
+                        if 'inter' in inst:
+
+                            if len(inst.split("_")) == 4:
+                                ind_1 = 0
+                                ind_2 = int(inst.split("_")[-2])
+                                ind_3 = int(inst.split("_")[-1])
+                                indices = [ind_1, ind_2, ind_3]
+                            elif len(inst.split("_")) == 5:
+                                ind_1 = 0
+                                ind_2 = int(inst.split("_")[-3])
+                                ind_3 = int(inst.split("_")[-2])
+                                ind_4 = int(inst.split("_")[-1])
+                                indices = [ind_1, ind_2, ind_3, ind_4]
+
+                        for intersection_num, ind in enumerate(indices):
+
+                            # ind = 0 - 1 
+                            # intersection_num = 0 - 1 
+                            last_step = (inst_ind == len(chain_instructions)-1)
+                            # last_step = True
+                            
+                            lhs, rel, rhs = chains[ind]
+                            
+                            # this "if" only happens for the first part of the chain ([user, likes, ?])
+                            if lhs is not None:
+                                lhs = lhs[batch[0]:batch[1]]
+                                lhs = lhs.view(-1, 1,
+                                               embedding_size).repeat(1, nb_branches, 1)
+
+                                lhs = lhs.view(-1, embedding_size)
+                                # lhs becomes [1, emb_size]
+                                rel = rel[batch[0]:batch[1]]
+                                rel = rel.view(-1, 1,
+                                           embedding_size).repeat(1, nb_branches, 1)
+                                rel = rel.view(-1, embedding_size)
+                                # rel becomes [1, emb_size]
+
+                                if intersection_num > 0 and 'disj' in env.graph_type:
+                                    raise NotImplementedError
+
+                                if f"rhs_{ind}" not in candidate_cache or last_step:
+                                    # z_scores is the scores of all entities to be the 
+                                    # rhs and rhs_3d is their embeddings ([1,no_entity, emb_size])
+                                    z_scores, rhs_3d = self.get_best_candidates(
+                                    rel, lhs, None, candidates, last_step, None)
+                                    z_scores_1d = z_scores.view(-1)
+
+                                    if 'disj' in env.graph_type or scores_normalize:
+                                        z_scores_1d = torch.sigmoid(z_scores_1d)
+
+                                    if not last_step:
+                                        nb_sources = rhs_3d.shape[0] * \
+                                            rhs_3d.shape[1]
+                                        nb_branches = nb_sources // batch_size
+                                    else:
+                                        if ind == indices[0]:
+                                            nb_ent = rhs_3d.shape[1]
+                                        else:
+                                            nb_ent = 1
+ 
+                                        # first time the batch scores is None and the z_scores we make it equal to z_scores_1d
+                                        batch_scores = z_scores_1d if batch_scores is None else objective(
+                                            z_scores_1d, batch_scores.view(-1, 1).repeat(1, nb_ent).view(-1), t_norm)
+                                        nb_ent = rhs_3d.shape[1]
+
+                                    candidate_cache[f"rhs_{ind}"] = (batch_scores, rhs_3d)
+
+                                    if ind == indices[0] and 'disj' in env.graph_type:
+                                        raise NotImplementedError
+
+                                    #if ind == indices[-1]:
+                                    #    candidate_cache[f"lhs_{ind+1}"] = (batch_scores, rhs_3d)
+                                else:
+                                    raise NotImplementedError
+                                del lhs, rel, rhs, rhs_3d, z_scores_1d, z_scores
+                                    
+                            # this is for the second part of the chain ([item, rel, tail])
+                            elif ind>0:
+                                rhs = rhs[batch[0]:batch[1]]
+                                rhs = rhs.view(-1, 1,
+                                               embedding_size).repeat(1, nb_branches, 1)
+                                rhs = rhs.view(-1, embedding_size)
+                                rel = rel[batch[0]:batch[1]]
+                                rel = rel.view(-1, 1,
+                                           embedding_size).repeat(1, nb_branches, 1)
+                                rel = rel.view(-1, embedding_size)
+
+                                if intersection_num > 0 and 'disj' in env.graph_type:
+                                    raise NotImplementedError
+                                if f"lhs_{ind}" not in candidate_cache or last_step:
+                                    z_scores, lhs_3d = self.get_best_candidates(
+                                        rel, rhs, None, candidates, last_step, None, 'rhs')
+                                    z_scores_1d = z_scores.view(-1)
+
+                                    if 'disj' in env.graph_type or scores_normalize:
+                                        z_scores_1d = torch.sigmoid(z_scores_1d)
+                                    # TODO: check this
+                                    if not last_step:
+                                        nb_sources = lhs_3d.shape[0] * \
+                                            lhs_3d.shape[1]
+                                        nb_branches = nb_sources // batch_size
+                                    if not last_step:
+                                        batch_scores = z_scores_1d if batch_scores is None else objective(
+                                            z_scores_1d, batch_scores.view(-1, 1).repeat(1, candidates).view(-1), t_norm)
+                                    else:
+
+                                        if ind == indices[0]:
+                                            nb_ent = lhs_3d.shape[1]
+                                        else:
+                                            nb_ent = 1
+                                        batch_scores = z_scores_1d if batch_scores is None else objective(
+                                            z_scores_1d, batch_scores.view(-1, 1).repeat(1, nb_ent).view(-1), t_norm)
+                                        nb_ent = lhs_3d.shape[1]
+                                    candidate_cache[f"lhs_{ind}"] = (batch_scores, lhs_3d)
+
+                                else:
+                                    raise NotImplementedError
+                                del lhs, rel, rhs, lhs_3d, z_scores_1d, z_scores
+                                
+            if batch_scores is not None:
+
+                scores_2d = batch_scores.view(batch_size, -1, nb_ent)
+                res, _ = torch.max(scores_2d, dim=1)
+                scores = res if scores is None else torch.cat([scores, res])
+                del batch_scores, scores_2d, res, candidate_cache
+
+            else:
+                assert False, "Batch Scores are empty: an error went uncaught."
+            res = scores
+        return res
+
+
+      
 
     def query_answering_BF(self, env: DynKBCSingleton, candidates: int = 5, t_norm: str = 'min', batch_size=1, scores_normalize=0, explain=False):
 
@@ -1234,25 +1435,7 @@ class KBCModel(nn.Module, ABC):
         batches = make_batches(nb_queries, batch_size)
         # batches = [(0,1), (1,2), (2,3), ...]
 
-        explain = env.graph_type == '1_2' and explain
-        if explain:
-            logger = logging.getLogger('explain')
-            logger.setLevel(logging.INFO)
-            fh = logging.FileHandler('explain.log', mode='w')
-            fh.setLevel(logging.INFO)
-            logger.addHandler(fh)
-
         for i, batch in enumerate(tqdm.tqdm(batches)):
-            if explain:
-                query = env.keys_complete[i]
-                anchor, rel1, x1, x2, rel2, x3 = query.split('_')
-                anchor = env.fb2name[env.ent_id2fb[int(anchor)]]
-                rel1 = env.rel_id2fb[int(rel1)]
-                rel2 = env.rel_id2fb[int(rel2)]
-                logger.info('-' * 100)
-                logger.info(
-                    f'Query: ?Y:∃ X.({anchor}, {rel1}, X) and (X, {rel2}, Y)')
-
             nb_branches = 1
             nb_ent = 0
             batch_scores = None
@@ -1469,51 +1652,13 @@ class KBCModel(nn.Module, ABC):
                 # [1,candidates, nb_ent]
                 # res is the max score for each entity among the candidates
                 res, _ = torch.max(scores_2d, dim=1)
-
-                if explain:
-                    final_scores = scores_2d.squeeze()
-                    for j in range(final_scores.shape[0]):
-                        logger.info(f'X = {j}')
-
-                        z_scores, z_indices = torch.topk(
-                            final_scores, k=candidates, dim=1)
-
-                        logger.info(
-                            f'\t{"Rank":<6} {"Y":<30} {"Final score":<12}')
-                        for k in range(z_indices.shape[1]):
-                            ent_id = z_indices[j, k].item()
-                            ent_score = z_scores[j, k].item()
-                            logger.info(
-                                f'\t{k:<6} {env.fb2name[env.ent_id2fb[ent_id]]:<30} {ent_score:<8.4f}')
-
-                    test_answers = set(env.target_ids_complete[query])
-
-                    res_top_val, res_top_idx = torch.topk(
-                        res.squeeze(), k=candidates)
-                    logger.info(f'Top {candidates} final answers')
-                    logger.info(f'{"Rank":<6} {"Y":<30} {"Final score":<12}')
-                    for j in range(res_top_val.shape[0]):
-                        ent_id = res_top_idx[j].item()
-                        ent_score = res_top_val[j].item()
-                        correct = '✓' if ent_id in test_answers else '✗'
-                        logger.info(
-                            f'[{correct}] {j:<6} {env.fb2name[env.ent_id2fb[ent_id]]:<30} {ent_score:<8.4f}')
-
-                    logger.info(f'Ground truth answers')
-                    for ans in test_answers:
-                        logger.info(f'- {env.fb2name[env.ent_id2fb[ans]]}')
-
                 scores = res if scores is None else torch.cat([scores, res])
 
                 del batch_scores, scores_2d, res, candidate_cache
 
             else:
                 assert False, "Batch Scores are empty: an error went uncaught."
-
             res = scores
-
-        if explain:
-            fh.close()
 
         # res has the score of each entity for each query
         return res
@@ -1637,6 +1782,16 @@ class SimplE(KBCModel):
         # to_score is all entities in tail
         for_prod = (lhs[0] * rel[0]) @ to_score[1].transpose(0, 1)
         inv_prod = (lhs[1] * rel[1]) @ to_score[0].transpose(0, 1)
+        return torch.clamp((for_prod + inv_prod)/2, min=-20, max=20)
+    
+    def backward_emb(self, rhs, rel):
+        rhs = rhs[:, :self.rank], rhs[:, self.rank:]
+        rel = rel[:, :self.rank], rel[:, self.rank:]
+        to_score = self.embeddings[0].weight
+        to_score = to_score[:, :self.rank], to_score[:, self.rank:]
+        # to_score is all entities in head
+        for_prod = (rhs[1] * rel[0]) @ to_score[0].transpose(0, 1)
+        inv_prod = (rhs[0] * rel[1]) @ to_score[1].transpose(0, 1)
         return torch.clamp((for_prod + inv_prod)/2, min=-20, max=20)
 
     def get_rhs(self, chunk_begin: int, chunk_size: int):
