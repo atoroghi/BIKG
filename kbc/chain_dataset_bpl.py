@@ -121,7 +121,9 @@ class ChaineDataset():
 
         try:
             # taking each triple in the test set e.g., (13, 1, 51)
-            for test_triple in tqdm(self.raw_data.data['test_with_kg']):
+            for test_triple in tqdm(self.raw_data.data['test_with_kg'][1060617:]):
+            #for test_triple in tqdm(self.raw_data.data['test_with_kg'][:1060617]):
+            #for test_triple in tqdm(self.raw_data.data['test_with_kg']):
                 if test_triple[1] == self.likes_rel and test_triple[2] in self.reverse_maps:
                     user = test_triple[0]
                     item = test_triple[2]
@@ -186,9 +188,9 @@ class ChaineDataset():
 
                             if len(self.type1_2chain) > self.threshold:
                                 print(f'1_2:{len(self.type1_2chain)}')
-                                for chain in  self.type1_2chain[:10]:
-                                    print(chain.data['raw_chain']) 
-                                sys.exit()
+                                #for chain in  self.type1_2chain[:10]:
+                                #    print(chain.data['raw_chain']) 
+                                #sys.exit()
 
                                 print("Threshold for sample amount reached")
                                 print("Finished sampling chains with legth 2 of type 1")
@@ -206,7 +208,9 @@ class ChaineDataset():
         try:
             #print(self.reverse_maps[17379])
             #sys.exit()
-            for test_triple in tqdm(self.raw_data.data['test_with_kg']):
+            for test_triple in tqdm(self.raw_data.data['test_with_kg'][1060617:]):
+            #for test_triple in tqdm(self.raw_data.data['test_with_kg'][:1060617]):
+            #for test_triple in tqdm(self.raw_data.data['test_with_kg']):
                 if test_triple[1] == self.likes_rel and test_triple[2] in self.reverse_maps:
                     #print(test_triple)
                     #sys.exit()
@@ -300,7 +304,7 @@ class ChaineDataset():
             potential_chain_cont_records = {}
             # we can't use chains 1_2 anymore because they might be insufficient for making 5 continuations
             #for chain in tqdm(self.type1_2chain):
-            for test_triple in tqdm(self.raw_data.data['test_with_kg']):
+            for test_triple in tqdm(self.raw_data.data['test_with_kg'][:1060617]):
                 if test_triple[1] == self.likes_rel and test_triple[2] in self.reverse_maps:
                     #print(test_triple)
                     #sys.exit()
@@ -527,7 +531,9 @@ class ChaineDataset():
 # this is 3i
     def __type2_3chains__(self):
         try:
-            for test_triple in tqdm(self.raw_data.data['test_with_kg']):
+            for test_triple in tqdm(self.raw_data.data['test_with_kg'][1060617:]):
+            #for test_triple in tqdm(self.raw_data.data['test_with_kg'][:1060617]):
+            #for test_triple in tqdm(self.raw_data.data['test_with_kg']):
                 if test_triple[1] == self.likes_rel and test_triple[2] in self.reverse_maps:
                     #print(test_triple)
                     user = test_triple[0]
@@ -855,7 +861,7 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    chained_dataset_sampler = ChaineDataset( Dataset(os.path.join('data',args.dataset)),args.threshold)
+    chained_dataset_sampler = ChaineDataset( Dataset(os.path.join('data',args.dataset,'kbc_data')),args.threshold)
     chained_dataset_sampler.sample_chains()
 
     save_chain_data(args.save_path,args.dataset,chained_dataset_sampler)
