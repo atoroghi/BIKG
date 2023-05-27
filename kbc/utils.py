@@ -180,7 +180,7 @@ class DynKBCSingleton:
     def set_attr(self, raw, kbc, chains, parts, target_ids_hard, keys_hard,
                  target_ids_complete, keys_complete,chain_instructions,
                  graph_type, lhs_norm, cuda, ent_id2fb, rel_id2fb, fb2name,
-                possible_heads_emb, possible_tails_emb, users, items, id_ent):
+                possible_heads_emb, possible_tails_emb, users, items, ent_id):
         self.raw = raw
         self.kbc = kbc
         self.chains = chains
@@ -205,13 +205,13 @@ class DynKBCSingleton:
         self.possible_tails_emb = possible_tails_emb
         self.users = users
         self.items = items
-        self.id_ent = id_ent
+        self.ent_id = ent_id
         self.__instance = self
 
     def __init__(self,raw = None, kbc = None, chains = None , parts = None, \
     target_ids_hard = None, keys_hard = None, target_ids_complete = None, keys_complete = None, \
     lhs_norm = None, chain_instructions = None, graph_type = None, cuda = None, possible_heads_emb=None,
-    possible_tails_emb = None, users = None, items = None, id_ent = None):
+    possible_tails_emb = None, users = None, items = None, ent_id = None):
         """ Virtually private constructor. """
         if DynKBCSingleton.__instance != None:
             raise Exception("This class is a singleton!")
@@ -235,7 +235,7 @@ class DynKBCSingleton:
             DynKBCSingleton.possible_tails_emb = possible_tails_emb
             DynKBCSingleton.users = users
             DynKBCSingleton.items = items
-            DynKBCSingleton.id_ent = id_ent
+            DynKBCSingleton.ent_id = ent_id
             DynKBCSingleton.__instance = self
 
     def set_eval_complete(self,target_ids_complete, keys_complete):
@@ -329,7 +329,7 @@ def get_keys_and_targets(parts, targets, graph_type):
 # takes each part of the chains and gets embeddings for each part
 
 def preload_env(kbc_path, dataset, graph_type, mode="complete", kg_path=None,
-                explain=False, valid_heads=None, valid_tails=None, id_ent=None):
+                explain=False, valid_heads=None, valid_tails=None, ent_id=None):
 
     from kbc.learn import kbc_model_load
 
@@ -343,6 +343,7 @@ def preload_env(kbc_path, dataset, graph_type, mode="complete", kg_path=None,
             kbc = env.kbc
         else:
             kbc, epoch, loss = kbc_model_load(kbc_path)
+
 
         for parameter in kbc.model.parameters():
             parameter.requires_grad = False
@@ -503,11 +504,13 @@ def preload_env(kbc_path, dataset, graph_type, mode="complete", kg_path=None,
                 # we also need the relation of the second part of the chain for possible tails
                 rel_2 = int(part2[i][1])
                 # gets the possible heads and tails of it
-                valid_heads_ent = [id_ent[x] for x in valid_heads[rel]]
+                #valid_heads_ent = [ent_id[x] for x in valid_heads[rel]]
+                valid_heads_ent = [x for x in valid_heads[rel]]
                 possible_heads = torch.tensor(np.array(valid_heads_ent).astype('int64') , device=device)
                 # possible tails of this relation should also be possible heads of the rel of the second part of the chain
                 intersect = np.intersect1d(np.array(valid_tails[rel]), np.array(valid_heads[rel_2]))
-                valid_tails_ent = [id_ent[x] for x in intersect]
+                #valid_tails_ent = [ent_id[x] for x in intersect]
+                valid_tails_ent = [x for x in intersect]
                 possible_tails = torch.tensor(np.array(valid_tails_ent).astype('int64'), device=device)
                 possible_heads_embeddings = kbc.model.entity_embeddings(possible_heads)
                 possible_tails_embeddings = kbc.model.entity_embeddings(possible_tails)
@@ -526,7 +529,8 @@ def preload_env(kbc_path, dataset, graph_type, mode="complete", kg_path=None,
 
             for i in range(part2.shape[0]):
                 rel = int(part2[i][1])
-                valid_tails_ent = [id_ent[x] for x in valid_tails[rel]]
+                valid_tails_ent = [x for x in valid_tails[rel]]
+                #valid_tails_ent = [ent_id[x] for x in valid_tails[rel]]
                 possible_tails = torch.tensor(np.array(valid_tails_ent).astype('int64'), device=device)
                 possible_tails_embeddings = kbc.model.entity_embeddings(possible_tails)
 
@@ -610,9 +614,8 @@ def preload_env(kbc_path, dataset, graph_type, mode="complete", kg_path=None,
                 # possible tails must be possible for both relations
                 first_intersect = np.intersect1d(np.array(valid_tails[rel_1]), np.array(valid_tails[rel_2]))
                 second_intersect = np.intersect1d(np.array(valid_tails[rel_3]), first_intersect)
-                valid_tails_ent = [id_ent[x] for x in second_intersect]
-
-                possible_tails = torch.tensor(np.intersect1d(valid_tails_ent).astype('int64'), device=device)
+                valid_tails_ent = [ent_id[x] for x in second_intersect]
+                possible_tails = torch.tensor(second_intersect.astype('int64'), device=device)
                 possible_tails_embeddings = kbc.model.entity_embeddings(possible_tails)
                 # get means of the tails
                 mean_tail = torch.mean(possible_tails_embeddings, dim=0)
@@ -848,6 +851,7 @@ def preload_env(kbc_path, dataset, graph_type, mode="complete", kg_path=None,
             if not chain_instructions:
                 chain_instructions = create_instructions_bpl([part1[0], part2[0], part3[0], part4[0]], graph_type)
 
+
             device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
             part1 = np.array(part1)
@@ -890,7 +894,7 @@ def preload_env(kbc_path, dataset, graph_type, mode="complete", kg_path=None,
                 first_intersect = np.intersect1d(np.array(valid_tails[rel_1]), np.array(valid_tails[rel_2])).astype('int64')
                 second_intersect = np.intersect1d(first_intersect, np.array(valid_tails[rel_3])).astype('int64')
                 third_intersect = np.intersect1d(second_intersect, np.array(valid_tails[rel_4])).astype('int64')
-                valid_tails_ent = [id_ent[x] for x in third_intersect]
+                valid_tails_ent = [ent_id[x] for x in third_intersect]
                 possible_tails = torch.tensor(valid_tails_ent, device=device)
                 possible_tails_embeddings = kbc.model.entity_embeddings(possible_tails)
                 # gets the mean of the tails
@@ -1210,7 +1214,7 @@ def preload_env(kbc_path, dataset, graph_type, mode="complete", kg_path=None,
             lhs_norm = 0.0
  
             env.set_attr(raw, kbc, chains, parts, target_ids, keys, None, None, chain_instructions, graph_type, lhs_norm, False, ent_id2fb, rel_id2fb, fb2name,
-            possible_heads_emb, possible_tails_emb, users, items, id_ent)
+            possible_heads_emb, possible_tails_emb, users, items, ent_id)
 
             # env.set_attr(kbc,chains,parts,target_ids, keys, chain_instructions , graph_type, lhs_norm)
             # def set_attr(kbc, chains, parts, target_ids_hard, keys_hard, target_ids_complete, keys_complete, chain_instructions, graph_type, lhs_norm, cuda ):
