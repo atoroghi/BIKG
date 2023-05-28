@@ -467,6 +467,7 @@ def preload_env(kbc_path, dataset, graph_type, mode="complete", kg_path=None,
             # for this chain type it's ['hop_0_1']
             if not chain_instructions:
                 chain_instructions = create_instructions_bpl([part1[0], part2[0]], graph_type)
+           
             
             device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
@@ -600,6 +601,7 @@ def preload_env(kbc_path, dataset, graph_type, mode="complete", kg_path=None,
             lhs_norm/= len(chain1[0])
             chains = [chain1,chain2, chain3]
             parts = [part1, part2, part3]
+
             # from here on, my code for getting the mean of the head and tail for each part
             # for part 1 (user, likes, item):
             part1_heads_emb = torch.zeros(chain1[0].shape, device=device)
@@ -611,10 +613,13 @@ def preload_env(kbc_path, dataset, graph_type, mode="complete", kg_path=None,
                 # we also need the relation of the second part of the chain for possible tails
                 rel_2 = int(part2[i][1])
                 rel_3 = int(part3[i][1])
-                # possible tails must be possible for both relations
-                first_intersect = np.intersect1d(np.array(valid_tails[rel_1]), np.array(valid_tails[rel_2]))
-                second_intersect = np.intersect1d(np.array(valid_tails[rel_3]), first_intersect)
-                valid_tails_ent = [ent_id[x] for x in second_intersect]
+                # possible tails must be possible for both relations in the case of QA
+                # for recommendation, since the first head is user, its tail (item) must be valid for the second relation's head
+                #first_intersect = np.intersect1d(np.array(valid_tails[rel_1]), np.array(valid_tails[rel_2]))
+                first_intersect = np.intersect1d(np.array(valid_tails[rel_1]), np.array(valid_heads[rel_2]))
+                second_intersect = np.intersect1d(np.array(valid_heads[rel_3]), first_intersect)
+                #valid_tails_ent = [ent_id[x] for x in second_intersect]
+                valid_tails_ent = second_intersect
                 possible_tails = torch.tensor(second_intersect.astype('int64'), device=device)
                 possible_tails_embeddings = kbc.model.entity_embeddings(possible_tails)
                 # get means of the tails
@@ -623,6 +628,7 @@ def preload_env(kbc_path, dataset, graph_type, mode="complete", kg_path=None,
 
             possible_tails_emb = [part1_tails_emb]
             possible_heads_emb = [part1_heads_emb]
+           
 
         elif QuerDAG.TYPE2_2_disj.value == graph_type:
             raw = dataset.type2_2_disj_chain
@@ -851,7 +857,6 @@ def preload_env(kbc_path, dataset, graph_type, mode="complete", kg_path=None,
             if not chain_instructions:
                 chain_instructions = create_instructions_bpl([part1[0], part2[0], part3[0], part4[0]], graph_type)
 
-
             device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
             part1 = np.array(part1)
@@ -891,10 +896,12 @@ def preload_env(kbc_path, dataset, graph_type, mode="complete", kg_path=None,
                 rel_2 = int(part2[i][1])
                 rel_3 = int(part3[i][1])
                 rel_4 = int(part4[i][1])
-                first_intersect = np.intersect1d(np.array(valid_tails[rel_1]), np.array(valid_tails[rel_2])).astype('int64')
-                second_intersect = np.intersect1d(first_intersect, np.array(valid_tails[rel_3])).astype('int64')
-                third_intersect = np.intersect1d(second_intersect, np.array(valid_tails[rel_4])).astype('int64')
-                valid_tails_ent = [ent_id[x] for x in third_intersect]
+                #first_intersect = np.intersect1d(np.array(valid_tails[rel_1]), np.array(valid_tails[rel_2])).astype('int64')
+                first_intersect = np.intersect1d(np.array(valid_tails[rel_1]), np.array(valid_heads[rel_2]))
+                second_intersect = np.intersect1d(first_intersect, np.array(valid_heads[rel_3])).astype('int64')
+                third_intersect = np.intersect1d(second_intersect, np.array(valid_heads[rel_4])).astype('int64')
+                #valid_tails_ent = [ent_id[x] for x in third_intersect]
+                valid_tails_ent = third_intersect
                 possible_tails = torch.tensor(valid_tails_ent, device=device)
                 possible_tails_embeddings = kbc.model.entity_embeddings(possible_tails)
                 # gets the mean of the tails

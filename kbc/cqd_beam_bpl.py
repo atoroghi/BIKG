@@ -67,7 +67,7 @@ def answer(kbc_path, dataset_hard, t_norm='min', query_type=QuerDAG.TYPE1_2, can
     queries = env.keys_hard
     if quantifier == 'existential':
         scores = kbc.model.query_answering_BF_Exist(env, candidates, t_norm=t_norm , batch_size=1, scores_normalize = scores_normalize, explain=explain)
-        print(scores.shape)
+
     elif quantifier == 'marginal_ui':
         scores = kbc.model.query_answering_BF_Marginal_UI(env, candidates, t_norm=t_norm , batch_size=1, scores_normalize = scores_normalize, explain=explain)
  

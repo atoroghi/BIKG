@@ -1406,6 +1406,7 @@ class KBCModel(nn.Module, ABC):
             else:
                 assert False, "Batch Scores are empty: an error went uncaught."
             res = scores
+
         return res
 
 
