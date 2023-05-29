@@ -1205,8 +1205,8 @@ class KBCModel(nn.Module, ABC):
 
 
     def query_answering_BF_Marginal_UI(self, env: DynKBCSingleton, candidates: int = 5, t_norm: str = 'min', 
-    batch_size=1, scores_normalize=0, explain=False):
-        res = None
+    batch_size=1, scores_normalize=0, explain='no', cov_var=1e-2, cov_anchor=1e-2, cov_target=1e-2):
+
         if 'disj' in env.graph_type:
             objective = self.t_conorm
         else: 
@@ -1215,27 +1215,197 @@ class KBCModel(nn.Module, ABC):
         chains, chain_instructions = env.chains, env.chain_instructions
         nb_queries, emb_dim = chains[0][0].shape[0], chains[0][0].shape[1]
         possible_heads_emb = env.possible_heads_emb; possible_tails_emb = env.possible_tails_emb
+        
+        user_embs = torch.empty((nb_queries, emb_dim), device=Device)
 
-        scores = None
         if env.graph_type == '1_2':
             part1 , part2 = parts[0], parts[1]
             chain1, chain2 = chains[0], chains[1]
-            lhs_1, rel_1, rhs_1, lhs_2, rel_2, rhs_2 = part1[:,0], part1[:,1], part1[:,2], part2[:,0], part2[:,1], part2[:,2]
-            lhs_1_emb, rel_1_emb, rhs_1_emb, lhs_2_emb, rel_2_emb, rhs_2_emb = chain1[0], chain1[1], chain1[2], chain2[0], chain2[1], chain2[2]
 
+            lhs_1_emb, rel_1_emb, rhs_1_emb, lhs_2_emb, rel_2_emb, rhs_2_emb = chain1[0], chain1[1], chain1[2], chain2[0], chain2[1], chain2[2]
+            
             if not 'SimplE' in str(self.model_type):
                 raise NotImplementedError
             else:
                 for i in tqdm.tqdm(range(nb_queries // 5)):
 
                     for j in range(5):
+                        # lhs_1 is the user belief. rhs_2 is the evidence embedding
                         lhs_1, rel_1, rhs_1 = lhs_1_emb[i*5+j], rel_1_emb[i*5+j], None
                         lhs_2, rel_2, rhs_2 = None, rel_2_emb[i*5+j], rhs_2_emb[i*5+j]
-                        print(lhs_1.shape)
-                        print(lhs_2)
-                    sys.exit()
+                        
+                        mu_m_for = possible_tails_emb[0][i*5+j, :emb_dim//2]                        
+                        h_m_for = (1/cov_var) * mu_m_for
+                        mu_m_inv = possible_tails_emb[0][i*5+j, emb_dim//2:]
+                        h_m_inv = (1/cov_var) * mu_m_inv
 
-        return res
+                        mu_d_for = rhs_2[:emb_dim//2] * rel_2[:emb_dim//2]
+                        h_d_for = (1/cov_anchor) * mu_d_for
+                        mu_d_inv = rhs_2[emb_dim//2:] * rel_2[emb_dim//2:]
+                        h_d_inv = (1/cov_anchor) * mu_d_inv
+
+                        h_m_for = h_m_for + h_d_inv
+                        h_m_inv = h_m_inv + h_d_for
+                        J_m_for = (1/cov_anchor) + (1/cov_var)
+                        # mu_m will be useful if you want to do explanation
+                        mu_m_for = h_m_for / J_m_for
+                        J_m_inv = (1/cov_anchor) + (1/cov_var)
+                        mu_m_inv = h_m_inv / J_m_inv
+
+                        # update the precision and information of the target node given the variable
+                        if j == 0:
+                            #mu_u = torch.unsqueeze(lhs_1, dim=0)
+                            mu_u = lhs_1
+                            mu_u_for = mu_u[:emb_dim//2]
+                            mu_u_inv = mu_u[emb_dim//2:]
+                            h_u_for = (1/cov_target) * mu_u_for
+                            h_u_inv = (1/cov_target) * mu_u_inv
+                            J_u_for = (1/cov_target)
+                            J_u_inv = (1/cov_target)
+                
+
+                        h_u_for = h_u_for - rel_1[:emb_dim//2] * (1 / J_m_inv) * h_m_inv
+                        J_u_for = J_u_for - rel_1[:emb_dim//2] * (1 / J_m_inv) * rel_1[:emb_dim//2]
+                        h_u_inv = h_u_inv - rel_1[emb_dim//2:] * (1 / J_m_for) * h_m_for
+                        J_u_inv = J_u_inv - rel_1[emb_dim//2:] * (1 / J_m_for) * rel_1[emb_dim//2:]
+
+                        mu_u_for = h_u_for / J_u_for
+                        mu_u_inv = h_u_inv / J_u_inv
+                     
+                        user_embs[i*5+j, :emb_dim//2] = mu_u_for
+                        user_embs[i*5+j, emb_dim//2:] = mu_u_inv
+
+                        # from here on, like user belief updating without beam search
+                        # for instantiated, we have to first find the top items as existential, then update user belief
+
+                # once we have the user embeddings for each query, we can calculate the recommendation scores
+                scores = self.forward_emb(user_embs, rel_1_emb)
+
+        elif env.graph_type == '2_2':
+            part1, part2, part3 = parts[0], parts[1], parts[2]
+            chain1, chain2, chain3 = chains[0], chains[1], chains[2]
+            lhs_1_emb, rel_1_emb, rhs_1_emb, lhs_2_emb, rel_2_emb, rhs_2_emb, lhs_3_emb, rel_3_emb, rhs_3_emb = chain1[0], chain1[1], chain1[2], chain2[0], chain2[1], chain2[2], chain3[0], chain3[1], chain3[2]
+
+            if not 'SimplE' in str(self.model_type):
+                raise NotImplementedError
+            else:
+                for i in tqdm.tqdm(range(nb_queries // 5)):
+                    for j in range(5):
+                        # lhs_1 is the user belief. rhs_2 and rhs_3 are the evidence embeddings
+                        lhs_1, rel_1, rhs_1 = lhs_1_emb[i*5+j], rel_1_emb[i*5+j], None
+                        lhs_2, rel_2, rhs_2 = None, rel_2_emb[i*5+j], rhs_2_emb[i*5+j]
+                        lhs_3, rel_3, rhs_3 = None, rel_3_emb[i*5+j], rhs_3_emb[i*5+j]
+
+                        mu_m_for = possible_tails_emb[0][i*5+j, :emb_dim//2]
+                        h_m_for = (1/cov_var) * mu_m_for
+                        mu_m_inv = possible_tails_emb[0][i*5+j, emb_dim//2:]
+                        h_m_inv = (1/cov_var) * mu_m_inv
+
+                        mu_d_for1 = rhs_2[:emb_dim//2] * rel_2[:emb_dim//2]
+                        h_d_for1 = (1/cov_anchor) * mu_d_for1
+                        mu_d_inv1 = rhs_2[emb_dim//2:] * rel_2[emb_dim//2:]
+                        h_d_inv1 = (1/cov_anchor) * mu_d_inv1
+                        mu_d_for2 = rhs_3[:emb_dim//2] * rel_3[:emb_dim//2]
+                        h_d_for2 = (1/cov_anchor) * mu_d_for2
+                        mu_d_inv2 = rhs_3[emb_dim//2:] * rel_3[emb_dim//2:]
+                        h_d_inv2 = (1/cov_anchor) * mu_d_inv2
+
+                        h_m_for = h_m_for + h_d_inv1 + h_d_inv2
+                        J_m_for = (1/cov_var) + (1/cov_anchor) + (1/cov_anchor)
+                        h_m_inv = h_m_inv + h_d_for1 + h_d_for2
+                        J_m_inv = (1/cov_var) + (1/cov_anchor) + (1/cov_anchor)
+                        mu_m_for = h_m_for / J_m_for
+                        mu_m_inv = h_m_inv / J_m_inv
+
+                        # update user belief
+                        if j==0:
+                            mu_u = lhs_1
+                            mu_u_for = mu_u[:emb_dim//2]
+                            mu_u_inv = mu_u[emb_dim//2:]
+                            h_u_for = (1/cov_target) * mu_u_for
+                            h_u_inv = (1/cov_target) * mu_u_inv
+                            J_u_for = (1/cov_target)
+                            J_u_inv = (1/cov_target)
+
+                        h_u_for = h_u_for - rel_1[:emb_dim//2] * (1 / J_m_inv) * h_m_inv
+                        J_u_for = J_u_for - rel_1[:emb_dim//2] * (1 / J_m_inv) * rel_1[:emb_dim//2]
+                        h_u_inv = h_u_inv - rel_1[emb_dim//2:] * (1 / J_m_for) * h_m_for
+                        J_u_inv = J_u_inv - rel_1[emb_dim//2:] * (1 / J_m_for) * rel_1[emb_dim//2:]
+
+                        mu_u_for = h_u_for / J_u_for
+                        mu_u_inv = h_u_inv / J_u_inv
+
+                        user_embs[i*5+j, :emb_dim//2] = mu_u_for
+                        user_embs[i*5+j, emb_dim//2:] = mu_u_inv
+                scores = self.forward_emb(user_embs, rel_1_emb)
+
+        elif env.graph_type == '2_3':
+            part1, part2, part3, part4 = parts[0], parts[1], parts[2], parts[3]
+            chain1, chain2, chain3, chain4 = chains[0], chains[1], chains[2], chains[3]
+
+            lhs_1_emb, rel_1_emb, rhs_1_emb, lhs_2_emb, rel_2_emb, rhs_2_emb, lhs_3_emb, rel_3_emb, rhs_3_emb, lhs_4_emb, rel_4_emb, rhs_4_emb = \
+                chain1[0], chain1[1], chain1[2], chain2[0], chain2[1], chain2[2], chain3[0], chain3[1], chain3[2], chain4[0], chain4[1], chain4[2]
+            if not 'SimplE' in str(self.model_type):
+                raise NotImplementedError
+            else:
+                for i in tqdm.tqdm(range(nb_queries // 5)):
+                    for j in range(5):
+                        # lhs_1 is the user belief. rhs_2, rhs_3, and rhs_4 are the evidence embeddings
+                        lhs_1, rel_1, rhs_1 = lhs_1_emb[i*5+j], rel_1_emb[i*5+j], None
+                        lhs_2, rel_2, rhs_2 = None, rel_2_emb[i*5+j], rhs_2_emb[i*5+j]
+                        lhs_3, rel_3, rhs_3 = None, rel_3_emb[i*5+j], rhs_3_emb[i*5+j]
+                        lhs_4, rel_4, rhs_4 = None, rel_4_emb[i*5+j], rhs_4_emb[i*5+j]
+
+                        mu_m_for = possible_tails_emb[0][i*5+j, :emb_dim//2]
+                        h_m_for = (1/cov_var) * mu_m_for
+                        mu_m_inv = possible_tails_emb[0][i*5+j, emb_dim//2:]
+                        h_m_inv = (1/cov_var) * mu_m_inv
+
+                        mu_d_for1 = rhs_2[:emb_dim//2] * rel_2[:emb_dim//2]
+                        h_d_for1 = (1/cov_anchor) * mu_d_for1
+                        mu_d_inv1 = rhs_2[emb_dim//2:] * rel_2[emb_dim//2:]
+                        h_d_inv1 = (1/cov_anchor) * mu_d_inv1
+                        mu_d_for2 = rhs_3[:emb_dim//2] * rel_3[:emb_dim//2]
+                        h_d_for2 = (1/cov_anchor) * mu_d_for2
+                        mu_d_inv2 = rhs_3[emb_dim//2:] * rel_3[emb_dim//2:]
+                        h_d_inv2 = (1/cov_anchor) * mu_d_inv2
+                        mu_d_for3 = rhs_4[:emb_dim//2] * rel_4[:emb_dim//2]
+                        h_d_for3 = (1/cov_anchor) * mu_d_for3
+                        mu_d_inv3 = rhs_4[emb_dim//2:] * rel_4[emb_dim//2:]
+                        h_d_inv3 = (1/cov_anchor) * mu_d_inv3
+
+                        h_m_for = h_m_for + h_d_inv1 + h_d_inv2 + h_d_inv3
+                        J_m_for = (1/cov_var) + (1/cov_anchor) + (1/cov_anchor) + (1/cov_anchor)
+                        h_m_inv = h_m_inv + h_d_for1 + h_d_for2 + h_d_for3
+                        J_m_inv = (1/cov_var) + (1/cov_anchor) + (1/cov_anchor) + (1/cov_anchor)
+                        mu_m_for = h_m_for / J_m_for
+                        mu_m_inv = h_m_inv / J_m_inv
+
+                        # update user belief
+                        if j==0:
+                            mu_u = lhs_1
+                            mu_u_for = mu_u[:emb_dim//2]
+                            mu_u_inv = mu_u[emb_dim//2:]
+                            h_u_for = (1/cov_var) * mu_u_for
+                            h_u_inv = (1/cov_var) * mu_u_inv
+                            J_u_for = (1/cov_var)
+                            J_u_inv = (1/cov_var)
+                        
+                        h_u_for = h_u_for - rel_1[:emb_dim//2] * (1 / J_m_inv) * h_m_inv
+                        J_u_for = J_u_for - rel_1[:emb_dim//2] * (1 / J_m_inv) * rel_1[:emb_dim//2]
+                        h_u_inv = h_u_inv - rel_1[emb_dim//2:] * (1 / J_m_for) * h_m_for
+                        J_u_inv = J_u_inv - rel_1[emb_dim//2:] * (1 / J_m_for) * rel_1[emb_dim//2:]
+
+                        mu_u_for = h_u_for / J_u_for
+                        mu_u_inv = h_u_inv / J_u_inv
+
+                        user_embs[i*5+j, :emb_dim//2] = mu_u_for
+                        user_embs[i*5+j, emb_dim//2:] = mu_u_inv
+                scores = self.forward_emb(user_embs, rel_1_emb)
+
+        print(scores.shape)
+        sys.exit()
+        return scores
 
     def query_answering_BF_Exist(self, env: DynKBCSingleton, candidates: int = 5, t_norm: str = 'min', 
     batch_size=1, scores_normalize=0, explain=False):
