@@ -75,6 +75,10 @@ explain=False, user_likes=None, ent_id=None, quantifier=None, valid_heads=None, 
         scores = kbc.model.query_answering_BF_Marginal_UI(env, candidates, t_norm=t_norm ,
          batch_size=1, scores_normalize = scores_normalize, explain=explain, cov_anchor=cov_anchor, cov_var=cov_var, cov_target=cov_target)
  
+    elif quantifier == 'marginal_i':
+        scores = kbc.model.query_answering_BF_Instantiated(env, candidates, t_norm=t_norm ,
+         batch_size=1, scores_normalize = scores_normalize, explain=explain, cov_anchor=cov_anchor, cov_var=cov_var, cov_target=cov_target)
+    
     test_ans_hard = env.target_ids_hard
     test_ans = 	env.target_ids_complete
     metrics = evaluate_existential(env, scores, user_likes, non_items_array)

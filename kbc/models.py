@@ -1405,8 +1405,74 @@ class KBCModel(nn.Module, ABC):
 
         return scores
 
+    def query_answering_BF_Instantiated(self, env: DynKBCSingleton, candidates: int=5, t_norm: str='min', 
+    batch_size=1, scores_normalize=0, explain='no', cov_anchor=1e-2, cov_var=1e-2, cov_target=1e-2, instantiations: int=3):
+        # scores will tell us which items are the most probable instantiation of the evidences
+        scores = self.query_answering_BF_Exist(env)
+        print(scores.shape)
+        print("instantiated")
+
+        if 'disj' in env.graph_type:
+            objective = self.t_conorm
+        else: 
+            objective = self.t_norm
+        parts = env.parts
+        chains, chain_instructions = env.chains, env.chain_instructions
+        nb_queries, emb_dim = chains[0][0].shape[0], chains[0][0].shape[1]
+        possible_heads_emb = env.possible_heads_emb; possible_tails_emb = env.possible_tails_emb
+        
+        user_embs = torch.empty((nb_queries, emb_dim), device=Device)
+        if env.graph_type == '1_2':
+            part1 , part2 = parts[0], parts[1]
+            chain1, chain2 = chains[0], chains[1]
+            lhs_1_emb, rel_1_emb, rhs_1_emb, lhs_2_emb, rel_2_emb, rhs_2_emb = chain1[0], chain1[1], chain1[2], chain2[0], chain2[1], chain2[2]
+        
+        elif env.graph_type == '2_2':
+            part1, part2, part3 = parts[0], parts[1], parts[2]
+            chain1, chain2, chain3 = chains[0], chains[1], chains[2]
+            lhs_1_emb, rel_1_emb, rhs_1_emb, lhs_2_emb, rel_2_emb, rhs_2_emb, lhs_3_emb, rel_3_emb, rhs_3_emb = chain1[0], chain1[1], chain1[2], chain2[0], chain2[1], chain2[2], chain3[0], chain3[1], chain3[2]
+        elif env.graph_type == '2_3':
+            part1, part2, part3, part4 = parts[0], parts[1], parts[2], parts[3]
+            chain1, chain2, chain3, chain4 = chains[0], chains[1], chains[2], chains[3]
+            lhs_1_emb, rel_1_emb, rhs_1_emb, lhs_2_emb, rel_2_emb, rhs_2_emb, lhs_3_emb, rel_3_emb, rhs_3_emb, lhs_4_emb, rel_4_emb, rhs_4_emb = \
+                chain1[0], chain1[1], chain1[2], chain2[0], chain2[1], chain2[2], chain3[0], chain3[1], chain3[2], chain4[0], chain4[1], chain4[2]
+
+
+        if not 'SimplE' in str(self.model_type):
+            raise NotImplementedError
+        else:
+            for i in tqdm.tqdm(range(nb_queries // 5)):
+                for j in range(5):
+                    lhs_1, rel_1, rhs_1 = lhs_1_emb[i*5+j], rel_1_emb[i*5+j], None
+                    instantiated_ents = torch.topk(scores[i*5+j], instantiations).indices
+                        
+                    if j == 0:
+                        user_belief = lhs_1
+                        J_u_for = 1/cov_target
+                        J_u_inv = 1/cov_target
+                    for ent in instantiated_ents:
+                        rhs_1 = self.entity_embeddings(ent)
+                        h_m_for = (1/cov_var) * rhs_1[:emb_dim//2] * rel_1[:emb_dim//2]
+                        h_m_inv = (1/cov_var) * rhs_1[emb_dim//2:] * rel_1[emb_dim//2:]
+                        h_u_for = J_u_for * user_belief[:emb_dim//2] + h_m_inv
+                        h_u_inv = J_u_inv * user_belief[emb_dim//2:] + h_m_for
+                        J_u_for = J_u_for + (1/cov_var) 
+                        J_u_inv = J_u_inv + (1/cov_var)
+                        mu_u_for = h_u_for / J_u_for
+                        mu_u_inv = h_u_inv / J_u_inv
+                        
+                    user_embs[i*5+j, :emb_dim//2] = mu_u_for
+                    user_embs[i*5+j, emb_dim//2:] = mu_u_inv
+                
+            scores = self.forward_emb(user_embs, rel_1_emb)
+        
+
+
+
+        return scores
+
     def query_answering_BF_Exist(self, env: DynKBCSingleton, candidates: int = 5, t_norm: str = 'min', 
-    batch_size=1, scores_normalize=0, explain=False):
+    batch_size=1, scores_normalize=0, explain=False, user_belief=None):
 
         res = None
         if 'disj' in env.graph_type:
@@ -1470,6 +1536,8 @@ class KBCModel(nn.Module, ABC):
                             
                             # this "if" only happens for the first part of the chain ([user, likes, ?])
                             if lhs is not None:
+                                if user_belief is not None:
+                                    lhs = user_belief
                                 lhs = lhs[batch[0]:batch[1]]
                                 lhs = lhs.view(-1, 1,
                                                embedding_size).repeat(1, nb_branches, 1)
