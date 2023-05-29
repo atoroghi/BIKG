@@ -1403,8 +1403,6 @@ class KBCModel(nn.Module, ABC):
                         user_embs[i*5+j, emb_dim//2:] = mu_u_inv
                 scores = self.forward_emb(user_embs, rel_1_emb)
 
-        print(scores.shape)
-        sys.exit()
         return scores
 
     def query_answering_BF_Exist(self, env: DynKBCSingleton, candidates: int = 5, t_norm: str = 'min', 
