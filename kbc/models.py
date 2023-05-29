@@ -1409,9 +1409,6 @@ class KBCModel(nn.Module, ABC):
     batch_size=1, scores_normalize=0, explain='no', cov_anchor=1e-2, cov_var=1e-2, cov_target=1e-2, instantiations: int=3):
         # scores will tell us which items are the most probable instantiation of the evidences
         scores = self.query_answering_BF_Exist(env)
-        print(scores.shape)
-        print("instantiated")
-
         if 'disj' in env.graph_type:
             objective = self.t_conorm
         else: 
