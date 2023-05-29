@@ -1205,7 +1205,7 @@ class KBCModel(nn.Module, ABC):
 
 
     def query_answering_BF_Marginal_UI(self, env: DynKBCSingleton, candidates: int = 5, t_norm: str = 'min', 
-    batch_size=1, scores_normalize=0, explain='no', cov_var=1e-2, cov_anchor=1e-2, cov_target=1e-2):
+    batch_size=1, scores_normalize=0, explain='no', cov_anchor=1e-2, cov_var=1e-2, cov_target=1e-2):
 
         if 'disj' in env.graph_type:
             objective = self.t_conorm
