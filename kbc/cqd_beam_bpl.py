@@ -69,13 +69,22 @@ explain=False, user_likes=None, ent_id=None, quantifier=None, valid_heads=None, 
 
     queries = env.keys_hard
     if quantifier == 'existential':
+        print("existential: cov_anchor:", cov_anchor)
+        print("existential: cov_var:", cov_var)
+        print("existential: cov_target:", cov_target)
         scores = kbc.model.query_answering_BF_Exist(env, candidates, t_norm=t_norm , batch_size=1, scores_normalize = scores_normalize, explain=explain)
 
     elif quantifier == 'marginal_ui':
+        print("Marginal UI: cov_anchor:", cov_anchor)
+        print("Marginal UI: cov_var:", cov_var)
+        print("Marginal UI: cov_target:", cov_target)
         scores = kbc.model.query_answering_BF_Marginal_UI(env, candidates, t_norm=t_norm ,
          batch_size=1, scores_normalize = scores_normalize, explain=explain, cov_anchor=cov_anchor, cov_var=cov_var, cov_target=cov_target)
  
     elif quantifier == 'marginal_i':
+        print("instantiated: cov_anchor:", cov_anchor)
+        print("instantiated: cov_var:", cov_var)
+        print("instantiated: cov_target:", cov_target)
         scores = kbc.model.query_answering_BF_Instantiated(env, candidates, t_norm=t_norm ,
          batch_size=1, scores_normalize = scores_normalize, explain=explain, cov_anchor=cov_anchor, cov_var=cov_var, cov_target=cov_target)
     
@@ -84,7 +93,7 @@ explain=False, user_likes=None, ent_id=None, quantifier=None, valid_heads=None, 
     metrics = evaluate_existential(env, scores, user_likes, non_items_array)
   
     #metrics = evaluation(scores, queries, test_ans, test_ans_hard)
-    print(metrics)
+    print(f'{quantifier}', metrics)
     sys.exit()
 
     return metrics
@@ -172,6 +181,8 @@ if __name__ == "__main__":
     ent_id = pickle.load(open(osp.join(args.path, 'ent_id.pickle'), 'rb'))
     rel_id = pickle.load(open(osp.join(args.path, 'rel_id.pickle'), 'rb'))
     non_items_array = np.load(osp.join(args.path, 'non_items_array.npy'))
+
+    print("Beam:")
 
 
     candidates = int(args.candidates)
