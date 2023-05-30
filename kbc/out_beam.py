@@ -24,14 +24,15 @@ if __name__ == '__main__':
 
     i = 0
     pattern = r"array\((\[.*?\])\)"
-    pattern2 = r"(\d+\.\d+)"
+    pattern2 = r"\d+(?:\.\d+)?(?:[eE][-+]?\d+)?"
 
     for filename in os.listdir(directory):
         consider_file = False
         if filename.endswith(".out"):
             with open(os.path.join(directory, filename)) as f:
-                for line in f.readlines():
-                    if "Beam" in line:
+                for new_line in f.readlines():
+                    line = new_line.lower()
+                    if "beam" in line:
                         consider_file = True
                     if consider_file:
 
@@ -60,9 +61,12 @@ if __name__ == '__main__':
                                 results['existential']['hits10_5'].append(hitsten_existential[4])
                                 results['existential']['hits10_6'].append(hitsten_existential[5])
 
-                        elif "Marginal UI" in line:
+                        elif "marginal" in line:
                             if "cov_anchor" in line:
+                                print(line)
+
                                 matches = re.findall(pattern2, line)
+                                print(matches)
                                 cov_anchor = float(matches[0])
                                 results['marginal UI']['cov_anchor'].append(cov_anchor)
                             elif "cov_var" in line:
@@ -84,7 +88,7 @@ if __name__ == '__main__':
                                 results['marginal UI']['hits10_4'].append(hitsten_marginal[3])
                                 results['marginal UI']['hits10_5'].append(hitsten_marginal[4])
                                 results['marginal UI']['hits10_6'].append(hitsten_marginal[5])
-                        elif "Instantiated" in line:
+                        elif "instantiated" in line:
                             if "cov_anchor" in line:
                                 matches = re.findall(pattern2, line)
                                 cov_anchor = float(matches[0])
