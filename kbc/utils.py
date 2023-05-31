@@ -177,7 +177,7 @@ class DynKBCSingleton:
         return DynKBCSingleton.__instance
 
 
-    def set_attr(self, raw, kbc, chains, parts, target_ids_hard, keys_hard,
+    def set_attr(self, raw, kbc, chains, parts, intact_parts, target_ids_hard, keys_hard,
                  target_ids_complete, keys_complete,chain_instructions,
                  graph_type, lhs_norm, cuda, ent_id2fb, rel_id2fb, fb2name,
                 possible_heads_emb, possible_tails_emb, users, items, ent_id):
@@ -185,6 +185,7 @@ class DynKBCSingleton:
         self.kbc = kbc
         self.chains = chains
         self.parts = parts
+        self.intact_parts = intact_parts
 
 
         self.target_ids_hard = target_ids_hard
@@ -425,6 +426,10 @@ def preload_env(kbc_path, dataset, graph_type, mode="complete", kg_path=None,
             part1 = [x['raw_chain'][0] for x in type1_2chain]
             part2 = [x['raw_chain'][1] for x in type1_2chain]
 
+            intact_part1 = part1.copy()
+            intact_part2 = part2.copy()
+            intact_parts = [intact_part1, intact_part2]
+
             flattened_part1 =[]
             flattened_part2 = []
 
@@ -553,7 +558,10 @@ def preload_env(kbc_path, dataset, graph_type, mode="complete", kg_path=None,
             part1 = [x['raw_chain'][0] for x in type2_2chain]
             part2 = [x['raw_chain'][1] for x in type2_2chain]
             part3 = [x['raw_chain'][2] for x in type2_2chain]
-
+            intact_part1 = part1.copy()
+            intact_part2 = part2.copy()
+            intact_part3 = part3.copy()
+            intact_parts = [intact_part1, intact_part2, intact_part3]
 
             flattened_part1 =[]
             flattened_part2 = []
@@ -830,6 +838,12 @@ def preload_env(kbc_path, dataset, graph_type, mode="complete", kg_path=None,
             part3 = [x['raw_chain'][2] for x in type2_3chain]
             part4 = [x['raw_chain'][3] for x in type2_3chain]
 
+            intact_part1 = part1.copy()
+            intact_part2 = part2.copy()
+            intact_part3 = part3.copy()
+            intact_part4 = part4.copy()
+            intact_parts = [intact_part1, intact_part2, intact_part3, intact_part4]
+
             flattened_part1 = []
             flattened_part2 = []
             flattened_part3 = []
@@ -910,7 +924,6 @@ def preload_env(kbc_path, dataset, graph_type, mode="complete", kg_path=None,
             
             possible_tails_emb = [part1_tails_emb]
             possible_heads_emb = [part1_heads_emb]
-
 
 
         elif QuerDAG.TYPE3_3.value == graph_type:
@@ -1220,7 +1233,7 @@ def preload_env(kbc_path, dataset, graph_type, mode="complete", kg_path=None,
 
             lhs_norm = 0.0
  
-            env.set_attr(raw, kbc, chains, parts, target_ids, keys, None, None, chain_instructions, graph_type, lhs_norm, False, ent_id2fb, rel_id2fb, fb2name,
+            env.set_attr(raw, kbc, chains, parts, intact_parts, target_ids, keys, None, None, chain_instructions, graph_type, lhs_norm, False, ent_id2fb, rel_id2fb, fb2name,
             possible_heads_emb, possible_tails_emb, users, items, ent_id)
 
             # env.set_attr(kbc,chains,parts,target_ids, keys, chain_instructions , graph_type, lhs_norm)

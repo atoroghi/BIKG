@@ -57,8 +57,6 @@ def evaluate_existential(env, scores, user_likes, non_items_array):
 
 
         gt_rank = (scores[i] > scores[i, gt_ent]).sum().item() + 1
-        #print(gt_ent, gt_rank)
-
 
         row = i // 5
         col = i % 5

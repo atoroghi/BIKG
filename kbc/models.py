@@ -15,7 +15,7 @@ import torch
 from torch import nn
 from torch import optim
 from torch import Tensor
-
+import numpy as np
 from kbc.regularizers import Regularizer
 import tqdm
 
@@ -1213,6 +1213,7 @@ class KBCModel(nn.Module, ABC):
             objective = self.t_norm
         parts = env.parts
         chains, chain_instructions = env.chains, env.chain_instructions
+        intact_parts = env.intact_parts
         nb_queries, emb_dim = chains[0][0].shape[0], chains[0][0].shape[1]
         possible_heads_emb = env.possible_heads_emb; possible_tails_emb = env.possible_tails_emb
         
@@ -1220,6 +1221,8 @@ class KBCModel(nn.Module, ABC):
 
         if env.graph_type == '1_2':
             part1 , part2 = parts[0], parts[1]
+            intact_part1, intact_part2 = intact_parts[0], intact_parts[1]
+
             chain1, chain2 = chains[0], chains[1]
 
             lhs_1_emb, rel_1_emb, rhs_1_emb, lhs_2_emb, rel_2_emb, rhs_2_emb = chain1[0], chain1[1], chain1[2], chain2[0], chain2[1], chain2[2]
@@ -1233,47 +1236,78 @@ class KBCModel(nn.Module, ABC):
                         # lhs_1 is the user belief. rhs_2 is the evidence embedding
                         lhs_1, rel_1, rhs_1 = lhs_1_emb[i*5+j], rel_1_emb[i*5+j], None
                         lhs_2, rel_2, rhs_2 = None, rel_2_emb[i*5+j], rhs_2_emb[i*5+j]
-                        
-                        mu_m_for = possible_tails_emb[0][i*5+j, :emb_dim//2]                        
-                        h_m_for = (1/cov_var) * mu_m_for
-                        mu_m_inv = possible_tails_emb[0][i*5+j, emb_dim//2:]
-                        h_m_inv = (1/cov_var) * mu_m_inv
-
-                        mu_d_for = rhs_2[:emb_dim//2] * rel_2[:emb_dim//2]
-                        h_d_for = (1/cov_anchor) * mu_d_for
-                        mu_d_inv = rhs_2[emb_dim//2:] * rel_2[emb_dim//2:]
-                        h_d_inv = (1/cov_anchor) * mu_d_inv
-
-                        h_m_for = h_m_for + h_d_inv
-                        h_m_inv = h_m_inv + h_d_for
-                        J_m_for = (1/cov_anchor) + (1/cov_var)
-                        # mu_m will be useful if you want to do explanation
-                        mu_m_for = h_m_for / J_m_for
-                        J_m_inv = (1/cov_anchor) + (1/cov_var)
-                        mu_m_inv = h_m_inv / J_m_inv
-
-                        # update the precision and information of the target node given the variable
+                        # sanity check
+                        mu_gt = self.entity_embeddings(torch.tensor((intact_part1[i*5+j][2].astype(np.int32))))
+                        h_gt_for = (1/cov_anchor) * mu_gt[:emb_dim//2] * rel_1[:emb_dim//2]
+                        h_gt_inv = (1/cov_anchor) * mu_gt[emb_dim//2:] * rel_1[emb_dim//2:]
                         if j == 0:
-                            #mu_u = torch.unsqueeze(lhs_1, dim=0)
-                            mu_u = lhs_1
-                            mu_u_for = mu_u[:emb_dim//2]
-                            mu_u_inv = mu_u[emb_dim//2:]
-                            h_u_for = (1/cov_target) * mu_u_for
-                            h_u_inv = (1/cov_target) * mu_u_inv
-                            J_u_for = (1/cov_target)
-                            J_u_inv = (1/cov_target)
-                
-
-                        h_u_for = h_u_for - rel_1[:emb_dim//2] * (1 / J_m_inv) * h_m_inv
-                        J_u_for = J_u_for - rel_1[:emb_dim//2] * (1 / J_m_inv) * rel_1[:emb_dim//2]
-                        h_u_inv = h_u_inv - rel_1[emb_dim//2:] * (1 / J_m_for) * h_m_for
-                        J_u_inv = J_u_inv - rel_1[emb_dim//2:] * (1 / J_m_for) * rel_1[emb_dim//2:]
-
-                        mu_u_for = h_u_for / J_u_for
-                        mu_u_inv = h_u_inv / J_u_inv
-                     
+                            mu_u_for, mu_u_inv = lhs_1[:emb_dim//2], lhs_1[emb_dim//2:]
+                            h_u_for, h_u_inv = (1/cov_target) * mu_u_for, (1/cov_target) * mu_u_inv
+                            J_u_for, J_u_inv = (1/cov_target), (1/cov_target)
+                        h_u_for = h_u_for + h_gt_inv
+                        h_u_inv = h_u_inv + h_gt_for
+                        J_u_for = J_u_for + (1/cov_anchor)
+                        J_u_inv = J_u_inv + (1/cov_anchor)
+                        mu_u_for, mu_u_inv = h_u_for / J_u_for, h_u_inv / J_u_inv
                         user_embs[i*5+j, :emb_dim//2] = mu_u_for
                         user_embs[i*5+j, emb_dim//2:] = mu_u_inv
+
+
+
+                        #print(lhs_1)
+                        #mu_m_for = possible_tails_emb[0][i*5+j, :emb_dim//2] 
+                        ##print(mu_m_for)  
+                        ##mu_m_for = 1000*torch.ones(emb_dim//2)                     
+                        #h_m_for = (1/cov_var) * mu_m_for
+                        #mu_m_inv = possible_tails_emb[0][i*5+j, emb_dim//2:]
+                        ##print(mu_m_inv)
+                        ##mu_m_inv = 1000*torch.ones(emb_dim//2) 
+                        #h_m_inv = (1/cov_var) * mu_m_inv
+
+                        #mu_d_for = rhs_2[:emb_dim//2] * rel_2[:emb_dim//2]
+                        #h_d_for = (1/cov_anchor) * mu_d_for
+                        #mu_d_inv = rhs_2[emb_dim//2:] * rel_2[emb_dim//2:]
+                        #h_d_inv = (1/cov_anchor) * mu_d_inv
+                        ##print(mu_d_inv)
+                        ##print(h_d_inv)
+
+                        #h_m_for = h_m_for + h_d_inv
+                        #h_m_inv = h_m_inv + h_d_for
+                        ##print(h_m_for)
+                        
+                        #J_m_for = (1/cov_anchor) + (1/cov_var)
+                        ## mu_m will be useful if you want to do explanation
+                        #mu_m_for = h_m_for / J_m_for
+                        #J_m_inv = (1/cov_anchor) + (1/cov_var)
+                        #mu_m_inv = h_m_inv / J_m_inv
+                        ##print(mu_m_inv)
+                        ##print(mu_m_for)
+
+                        ## update the precision and information of the target node given the variable
+                        #if j == 0:
+                        #    #mu_u = torch.unsqueeze(lhs_1, dim=0)
+                        #    mu_u = lhs_1
+                        #    mu_u_for = mu_u[:emb_dim//2]
+                        #    mu_u_inv = mu_u[emb_dim//2:]
+                        #    h_u_for = (1/cov_target) * mu_u_for
+                        #    h_u_inv = (1/cov_target) * mu_u_inv
+                        #    J_u_for = (1/cov_target)
+                        #    J_u_inv = (1/cov_target)
+                        ##print(h_u_for)
+
+                        #h_u_for = h_u_for - rel_1[:emb_dim//2] * (1 / J_m_inv) * h_m_inv
+                        #J_u_for = J_u_for - rel_1[:emb_dim//2] * (1 / J_m_inv) * rel_1[:emb_dim//2]
+                        #h_u_inv = h_u_inv - rel_1[emb_dim//2:] * (1 / J_m_for) * h_m_for
+                        #J_u_inv = J_u_inv - rel_1[emb_dim//2:] * (1 / J_m_for) * rel_1[emb_dim//2:]
+
+                        #mu_u_for = h_u_for / J_u_for
+                        #mu_u_inv = h_u_inv / J_u_inv
+                        ##print(h_u_for)
+                        ##print(mu_u_for)
+                        ##sys.exit()
+                     
+                        #user_embs[i*5+j, :emb_dim//2] = mu_u_for
+                        #user_embs[i*5+j, emb_dim//2:] = mu_u_inv
 
                         # from here on, like user belief updating without beam search
                         # for instantiated, we have to first find the top items as existential, then update user belief
@@ -1345,26 +1379,40 @@ class KBCModel(nn.Module, ABC):
 
             lhs_1_emb, rel_1_emb, rhs_1_emb, lhs_2_emb, rel_2_emb, rhs_2_emb, lhs_3_emb, rel_3_emb, rhs_3_emb, lhs_4_emb, rel_4_emb, rhs_4_emb = \
                 chain1[0], chain1[1], chain1[2], chain2[0], chain2[1], chain2[2], chain3[0], chain3[1], chain3[2], chain4[0], chain4[1], chain4[2]
+            print(lhs_1_emb[0])
             if not 'SimplE' in str(self.model_type):
                 raise NotImplementedError
             else:
                 for i in tqdm.tqdm(range(nb_queries // 5)):
                     for j in range(5):
+                        #print(intact_parts[0][i*5+j])
+                        #print(intact_parts[1][i*5+j])
+                        #print(intact_parts[2][i*5+j])
+                        #print(intact_parts[3][i*5+j])
+    
                         # lhs_1 is the user belief. rhs_2, rhs_3, and rhs_4 are the evidence embeddings
                         lhs_1, rel_1, rhs_1 = lhs_1_emb[i*5+j], rel_1_emb[i*5+j], None
                         lhs_2, rel_2, rhs_2 = None, rel_2_emb[i*5+j], rhs_2_emb[i*5+j]
                         lhs_3, rel_3, rhs_3 = None, rel_3_emb[i*5+j], rhs_3_emb[i*5+j]
                         lhs_4, rel_4, rhs_4 = None, rel_4_emb[i*5+j], rhs_4_emb[i*5+j]
 
-                        mu_m_for = possible_tails_emb[0][i*5+j, :emb_dim//2]
+                        #mu_m_for = possible_tails_emb[0][i*5+j, :emb_dim//2]
+                        mu_m_for = 1000*torch.ones(emb_dim//2)
+
                         h_m_for = (1/cov_var) * mu_m_for
-                        mu_m_inv = possible_tails_emb[0][i*5+j, emb_dim//2:]
+                        #print(h_m_for)
+                        #mu_m_inv = possible_tails_emb[0][i*5+j, emb_dim//2:]
+                        mu_m_inv = 1000*torch.ones(emb_dim//2)
                         h_m_inv = (1/cov_var) * mu_m_inv
+                        #print(h_m_inv)
 
                         mu_d_for1 = rhs_2[:emb_dim//2] * rel_2[:emb_dim//2]
                         h_d_for1 = (1/cov_anchor) * mu_d_for1
+
                         mu_d_inv1 = rhs_2[emb_dim//2:] * rel_2[emb_dim//2:]
+                        #print(mu_d_inv1)
                         h_d_inv1 = (1/cov_anchor) * mu_d_inv1
+                        #print(h_d_inv1)
                         mu_d_for2 = rhs_3[:emb_dim//2] * rel_3[:emb_dim//2]
                         h_d_for2 = (1/cov_anchor) * mu_d_for2
                         mu_d_inv2 = rhs_3[emb_dim//2:] * rel_3[emb_dim//2:]
@@ -1375,29 +1423,37 @@ class KBCModel(nn.Module, ABC):
                         h_d_inv3 = (1/cov_anchor) * mu_d_inv3
 
                         h_m_for = h_m_for + h_d_inv1 + h_d_inv2 + h_d_inv3
+                        #print(h_m_for)
+                        #sys.exit()
                         J_m_for = (1/cov_var) + (1/cov_anchor) + (1/cov_anchor) + (1/cov_anchor)
                         h_m_inv = h_m_inv + h_d_for1 + h_d_for2 + h_d_for3
                         J_m_inv = (1/cov_var) + (1/cov_anchor) + (1/cov_anchor) + (1/cov_anchor)
                         mu_m_for = h_m_for / J_m_for
                         mu_m_inv = h_m_inv / J_m_inv
+                        #print(h_m_inv)
 
                         # update user belief
                         if j==0:
                             mu_u = lhs_1
                             mu_u_for = mu_u[:emb_dim//2]
                             mu_u_inv = mu_u[emb_dim//2:]
-                            h_u_for = (1/cov_var) * mu_u_for
-                            h_u_inv = (1/cov_var) * mu_u_inv
-                            J_u_for = (1/cov_var)
-                            J_u_inv = (1/cov_var)
-                        
+                            h_u_for = (1/cov_target) * mu_u_for
+                            h_u_inv = (1/cov_target) * mu_u_inv
+                            J_u_for = (1/cov_target)
+                            J_u_inv = (1/cov_target)
+                            print(mu_u_for)
+                        #print(h_u_for)
                         h_u_for = h_u_for - rel_1[:emb_dim//2] * (1 / J_m_inv) * h_m_inv
+                        #print(h_u_for)
+                        #sys.exit()
                         J_u_for = J_u_for - rel_1[:emb_dim//2] * (1 / J_m_inv) * rel_1[:emb_dim//2]
                         h_u_inv = h_u_inv - rel_1[emb_dim//2:] * (1 / J_m_for) * h_m_for
                         J_u_inv = J_u_inv - rel_1[emb_dim//2:] * (1 / J_m_for) * rel_1[emb_dim//2:]
 
                         mu_u_for = h_u_for / J_u_for
                         mu_u_inv = h_u_inv / J_u_inv
+                        print(mu_u_for)
+                        sys.exit()
 
                         user_embs[i*5+j, :emb_dim//2] = mu_u_for
                         user_embs[i*5+j, emb_dim//2:] = mu_u_inv
