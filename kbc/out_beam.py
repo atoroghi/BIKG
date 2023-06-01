@@ -63,10 +63,7 @@ if __name__ == '__main__':
 
                         elif "marginal" in line:
                             if "cov_anchor" in line:
-                                print(line)
-
                                 matches = re.findall(pattern2, line)
-                                print(matches)
                                 cov_anchor = float(matches[0])
                                 results['marginal UI']['cov_anchor'].append(cov_anchor)
                             elif "cov_var" in line:
@@ -114,7 +111,6 @@ if __name__ == '__main__':
                                 results['instantiated']['hits10_6'].append(hitsten_marginal[5])
 
     for quantifier in ['existential', 'marginal UI', 'instantiated']:
-        print(quantifier)
         quantifier_results = results[quantifier]
         quantifier_results_sorted = sorted(zip(quantifier_results['cov_anchor'], quantifier_results['cov_var'], quantifier_results['cov_target'],
                                                   quantifier_results['hits10_0'], quantifier_results['hits10_1'], quantifier_results['hits10_3'],
