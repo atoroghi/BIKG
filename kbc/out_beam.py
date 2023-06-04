@@ -9,13 +9,14 @@ if __name__ == '__main__':
         Iterates through all files with ".out" extension in the given directory and looks for the result with
         the greatest hits@10.
         """
+    k = 3
     results = {'existential':{}, 'marginal UI':{}, 'instantiated':{}}
     for key in list(results.keys()):
         results[key]['cov_anchor'] = []
         results[key]['cov_var'] = []
         results[key]['cov_target'] = []
-        results[key]['hits10_0'] = []; results[key]['hits10_1'] = []; results[key]['hits10_3'] = []
-        results[key]['hits10_4'] = []; results[key]['hits10_5'] = []; results[key]['hits10_6'] = []
+        results[key][f'hits{k}_0'] = []; results[key][f'hits{k}_1'] = []; results[key][f'hits{k}_3'] = []
+        results[key][f'hits{k}_4'] = []; results[key][f'hits{k}_5'] = []; results[key][f'hits{k}_6'] = []
 
     hitsone_existential_all = np.array([]); hitsone_marginal_all = np.array([]); hitsone_instantiated_all = np.array([])
     hitsthree_existential_all = np.array([]); hitsthree_marginal_all = np.array([]); hitsthree_instantiated_all = np.array([])
@@ -54,18 +55,28 @@ if __name__ == '__main__':
                                 hitsone_existential = np.array(eval(matches1[0]))
                                 hitsthree_existential = np.array(eval(matches1[1]))
                                 hitsten_existential = np.array(eval(matches1[2]))
-                                results['existential']['hits10_0'].append(hitsten_existential[0])
-                                results['existential']['hits10_1'].append(hitsten_existential[1])
-                                results['existential']['hits10_3'].append(hitsten_existential[2])
-                                results['existential']['hits10_4'].append(hitsten_existential[3])
-                                results['existential']['hits10_5'].append(hitsten_existential[4])
-                                results['existential']['hits10_6'].append(hitsten_existential[5])
+                                if k == 1:
+                                    hits = hitsone_existential
+                                elif k == 3:
+                                    hits = hitsthree_existential
+                                elif k == 10:
+                                    hits = hitsten_existential
+                                results['existential'][f'hits{k}_0'].append(hits[0])
+                                results['existential'][f'hits{k}_1'].append(hits[1])
+                                results['existential'][f'hits{k}_3'].append(hits[2])
+                                results['existential'][f'hits{k}_4'].append(hits[3])
+                                results['existential'][f'hits{k}_5'].append(hits[4])
+                                results['existential'][f'hits{k}_6'].append(hits[5])
 
-                        elif "marginal_ui" in line:
+                        elif "marginal_ui" in line or "marginal ui" in line:
+
                             if "cov_anchor" in line:
 
                                 matches = re.findall(pattern2, line)
+                             
                                 cov_anchor = float(matches[0])
+                                print(cov_anchor)
+                                sys.exit()
                                 results['marginal UI']['cov_anchor'].append(cov_anchor)
                             elif "cov_var" in line:
                                 matches = re.findall(pattern2, line)
@@ -80,12 +91,19 @@ if __name__ == '__main__':
                                 hitsone_marginal = np.array(eval(matches1[0]))
                                 hitsthree_marginal = np.array(eval(matches1[1]))
                                 hitsten_marginal = np.array(eval(matches1[2]))
-                                results['marginal UI']['hits10_0'].append(hitsten_marginal[0])
-                                results['marginal UI']['hits10_1'].append(hitsten_marginal[1])
-                                results['marginal UI']['hits10_3'].append(hitsten_marginal[2])
-                                results['marginal UI']['hits10_4'].append(hitsten_marginal[3])
-                                results['marginal UI']['hits10_5'].append(hitsten_marginal[4])
-                                results['marginal UI']['hits10_6'].append(hitsten_marginal[5])
+                                if k == 1:
+                                    hits = hitsone_marginal
+                                elif k == 3:
+                                    hits = hitsthree_marginal
+                                elif k == 10:
+                                    hits = hitsten_marginal
+                                results['marginal UI'][f'hits{k}_0'].append(hits[0])
+                                results['marginal UI'][f'hits{k}_1'].append(hits[1])
+                                results['marginal UI'][f'hits{k}_3'].append(hits[2])
+                                results['marginal UI'][f'hits{k}_4'].append(hits[3])
+                                results['marginal UI'][f'hits{k}_5'].append(hits[4])
+                                results['marginal UI'][f'hits{k}_6'].append(hits[5])
+
                         elif "instantiated" in line or 'marginal_i' in line:
                             if "cov_anchor" in line:
                                 matches = re.findall(pattern2, line)
@@ -104,41 +122,47 @@ if __name__ == '__main__':
                                 hitsone_marginal = np.array(eval(matches1[0]))
                                 hitsthree_marginal = np.array(eval(matches1[1]))
                                 hitsten_marginal = np.array(eval(matches1[2]))
-                                results['instantiated']['hits10_0'].append(hitsten_marginal[0])
-                                results['instantiated']['hits10_1'].append(hitsten_marginal[1])
-                                results['instantiated']['hits10_3'].append(hitsten_marginal[2])
-                                results['instantiated']['hits10_4'].append(hitsten_marginal[3])
-                                results['instantiated']['hits10_5'].append(hitsten_marginal[4])
-                                results['instantiated']['hits10_6'].append(hitsten_marginal[5])
+                                if k == 1:
+                                    hits = hitsone_marginal
+                                elif k == 3:
+                                    hits = hitsthree_marginal
+                                elif k == 10:
+                                    hits = hitsten_marginal
+                                results['instantiated'][f'hits{k}_0'].append(hits[0])
+                                results['instantiated'][f'hits{k}_1'].append(hits[1])
+                                results['instantiated'][f'hits{k}_3'].append(hits[2])
+                                results['instantiated'][f'hits{k}_4'].append(hits[3])
+                                results['instantiated'][f'hits{k}_5'].append(hits[4])
+                                results['instantiated'][f'hits{k}_6'].append(hits[5])
 
 
     for quantifier in ['existential', 'marginal UI', 'instantiated']:
-        print(quantifier)
         quantifier_results = results[quantifier]
+        
         quantifier_results_sorted = sorted(zip(quantifier_results['cov_anchor'], quantifier_results['cov_var'], quantifier_results['cov_target'],
-                                                  quantifier_results['hits10_0'], quantifier_results['hits10_1'], quantifier_results['hits10_3'],
-                                                    quantifier_results['hits10_4'], quantifier_results['hits10_5'], quantifier_results['hits10_6']), key=lambda x: x[-1], reverse=True)
-
-
+                                                  quantifier_results[f'hits{k}_0'], quantifier_results[f'hits{k}_1'], quantifier_results[f'hits{k}_3'],
+                                                    quantifier_results[f'hits{k}_4'], quantifier_results[f'hits{k}_5'], quantifier_results[f'hits{k}_6']), key=lambda x: x[-1], reverse=True)
+        print(quantifier_results)
 
         sorted_dict = {
             'cov_anchor': [x[0] for x in quantifier_results_sorted],
             'cov_var': [x[1] for x in quantifier_results_sorted],
             'cov_target': [x[2] for x in quantifier_results_sorted],
-            'hits10_0': [x[3] for x in quantifier_results_sorted],
-            'hits10_1': [x[4] for x in quantifier_results_sorted],
-            'hits10_3': [x[5] for x in quantifier_results_sorted],
-            'hits10_4': [x[6] for x in quantifier_results_sorted],
-            'hits10_5': [x[7] for x in quantifier_results_sorted],
-            'hits10_6': [x[8] for x in quantifier_results_sorted]
+            f'hits{k}_0': [x[3] for x in quantifier_results_sorted],
+            f'hits{k}_1': [x[4] for x in quantifier_results_sorted],
+            f'hits{k}_3': [x[5] for x in quantifier_results_sorted],
+            f'hits{k}_4': [x[6] for x in quantifier_results_sorted],
+            f'hits{k}_5': [x[7] for x in quantifier_results_sorted],
+            f'hits{k}_6': [x[8] for x in quantifier_results_sorted]
 
         }
+        print(sorted_dict)
 
         table = PrettyTable(['cov_anchor', 'cov_var', 'cov_target', 'hits10_0', 'hits10_1', 'hits10_3', 'hits10_4', 'hits10_5', 'hits10_6'])
 
         for i in range(len(sorted_dict['cov_anchor'])):
-            table.add_row([sorted_dict['cov_anchor'][i], sorted_dict['cov_var'][i], sorted_dict['cov_target'][i], sorted_dict['hits10_0'][i], sorted_dict['hits10_1'][i],
-                           sorted_dict['hits10_3'][i], sorted_dict['hits10_4'][i], sorted_dict['hits10_5'][i], sorted_dict['hits10_6'][i]])
+            table.add_row([sorted_dict['cov_anchor'][i], sorted_dict['cov_var'][i], sorted_dict['cov_target'][i], sorted_dict[f'hits{k}_0'][i], sorted_dict[f'hits{k}_1'][i],
+                           sorted_dict[f'hits{k}_3'][i], sorted_dict[f'hits{k}_4'][i], sorted_dict[f'hits{k}_5'][i], sorted_dict[f'hits{k}_6'][i]])
 
         print(table)
 
