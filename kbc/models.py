@@ -1378,6 +1378,7 @@ class KBCModel(nn.Module, ABC):
 
             lhs_1_emb, rel_1_emb, rhs_1_emb, lhs_2_emb, rel_2_emb, rhs_2_emb, lhs_3_emb, rel_3_emb, rhs_3_emb, lhs_4_emb, rel_4_emb, rhs_4_emb = \
                 chain1[0], chain1[1], chain1[2], chain2[0], chain2[1], chain2[2], chain3[0], chain3[1], chain3[2], chain4[0], chain4[1], chain4[2]
+            print(lhs_1_emb[0])
             if not 'SimplE' in str(self.model_type):
                 raise NotImplementedError
             else:
@@ -1394,13 +1395,13 @@ class KBCModel(nn.Module, ABC):
                         lhs_3, rel_3, rhs_3 = None, rel_3_emb[i*5+j], rhs_3_emb[i*5+j]
                         lhs_4, rel_4, rhs_4 = None, rel_4_emb[i*5+j], rhs_4_emb[i*5+j]
 
-                        mu_m_for = possible_tails_emb[0][i*5+j, :emb_dim//2]
-                        #mu_m_for = 1000*torch.ones(emb_dim//2)
+                        #mu_m_for = possible_tails_emb[0][i*5+j, :emb_dim//2]
+                        mu_m_for = 1000*torch.ones(emb_dim//2)
 
                         h_m_for = (1/cov_var) * mu_m_for
                         #print(h_m_for)
-                        mu_m_inv = possible_tails_emb[0][i*5+j, emb_dim//2:]
-                        #mu_m_inv = 1000*torch.ones(emb_dim//2)
+                        #mu_m_inv = possible_tails_emb[0][i*5+j, emb_dim//2:]
+                        mu_m_inv = 1000*torch.ones(emb_dim//2)
                         h_m_inv = (1/cov_var) * mu_m_inv
                         #print(h_m_inv)
 
@@ -1439,6 +1440,7 @@ class KBCModel(nn.Module, ABC):
                             h_u_inv = (1/cov_target) * mu_u_inv
                             J_u_for = (1/cov_target)
                             J_u_inv = (1/cov_target)
+                            print(mu_u_for)
                         #print(h_u_for)
                         h_u_for = h_u_for - rel_1[:emb_dim//2] * (1 / J_m_inv) * h_m_inv
                         #print(h_u_for)
@@ -1449,6 +1451,8 @@ class KBCModel(nn.Module, ABC):
 
                         mu_u_for = h_u_for / J_u_for
                         mu_u_inv = h_u_inv / J_u_inv
+                        print(mu_u_for)
+                        sys.exit()
 
                         user_embs[i*5+j, :emb_dim//2] = mu_u_for
                         user_embs[i*5+j, emb_dim//2:] = mu_u_inv
