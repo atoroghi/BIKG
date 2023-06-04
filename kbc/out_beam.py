@@ -61,12 +61,10 @@ if __name__ == '__main__':
                                 results['existential']['hits10_5'].append(hitsten_existential[4])
                                 results['existential']['hits10_6'].append(hitsten_existential[5])
 
-                        elif "marginal" in line:
+                        elif "marginal_ui" in line:
                             if "cov_anchor" in line:
-                                print(line)
 
                                 matches = re.findall(pattern2, line)
-                                print(matches)
                                 cov_anchor = float(matches[0])
                                 results['marginal UI']['cov_anchor'].append(cov_anchor)
                             elif "cov_var" in line:
@@ -88,7 +86,7 @@ if __name__ == '__main__':
                                 results['marginal UI']['hits10_4'].append(hitsten_marginal[3])
                                 results['marginal UI']['hits10_5'].append(hitsten_marginal[4])
                                 results['marginal UI']['hits10_6'].append(hitsten_marginal[5])
-                        elif "instantiated" in line:
+                        elif "instantiated" in line or 'marginal_i' in line:
                             if "cov_anchor" in line:
                                 matches = re.findall(pattern2, line)
                                 cov_anchor = float(matches[0])
@@ -112,6 +110,7 @@ if __name__ == '__main__':
                                 results['instantiated']['hits10_4'].append(hitsten_marginal[3])
                                 results['instantiated']['hits10_5'].append(hitsten_marginal[4])
                                 results['instantiated']['hits10_6'].append(hitsten_marginal[5])
+
 
     for quantifier in ['existential', 'marginal UI', 'instantiated']:
         print(quantifier)

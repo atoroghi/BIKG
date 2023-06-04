@@ -1496,7 +1496,8 @@ class KBCModel(nn.Module, ABC):
             for i in tqdm.tqdm(range(nb_queries // 5)):
                 for j in range(5):
                     lhs_1, rel_1, rhs_1 = lhs_1_emb[i*5+j], rel_1_emb[i*5+j], None
-                    instantiated_ents = torch.topk(scores[i*5+j], instantiations).indices
+                    #instantiated_ents = torch.topk(scores[i*5+j], instantiations).indices
+                    instantiated_ents = torch.topk(scores[i*5+j], candidates).indices
                         
                     if j == 0:
                         user_belief = lhs_1
