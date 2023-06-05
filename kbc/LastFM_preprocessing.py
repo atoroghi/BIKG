@@ -53,8 +53,8 @@ def add_inverse(rec, kg):
     return new_rec, new_kg
     
 #%%   
-dataset = 'Movielens'
-#dataset = 'LastFM'
+#dataset = 'Movielens'
+dataset = 'LastFM'
 #dataset = 'AmazonBook'
 from pathlib import Path
 import pickle
@@ -64,8 +64,16 @@ root = Path(path)
 print(root)
 print(os.listdir(root))    
 kg_path = os.path.join(root, 'kg/train.dat')
+kg_path_test = os.path.join(root, 'kg/test.dat')
+kg_path_valid = os.path.join(root, 'kg/valid.dat')
 rec_path = os.path.join(root,'rs/ratings.txt')
 kg = np.genfromtxt(kg_path, delimiter='\t', dtype=np.int32)
+kg_test = np.genfromtxt(kg_path_test, delimiter='\t', dtype=np.int32)
+kg_valid = np.genfromtxt(kg_path_valid, delimiter='\t', dtype=np.int32)
+# in case of LFM, there are entities in test and valid that are not in train
+if dataset == 'LastFM':
+    kg = np.concatenate((kg, kg_test, kg_valid), axis=0)
+
 rec = np.genfromtxt(rec_path, delimiter='\t', dtype=np.int32)
 #%%
 n_e = len(set(kg[:, 0]) | set(kg[:, 2]))
@@ -96,10 +104,8 @@ with open(item2kg_path) as f:
     for line in f:
         ml_id = re.search('(.+?)\t', line)
         fb_http = re.search('\t(.+?)\n', line)
-        if dataset == 'Movielens':
+        if dataset == 'Movielens' or dataset == 'LastFM':
             ml2fb_map.update({int(ml_id.group(1)) : fb_http.group(1)})
-        elif dataset == 'LastFM':
-            ml2fb_map.update({ml_id.group(1) : fb_http.group(1)})
 
 #%%
 
@@ -134,7 +140,8 @@ while True:
     else:
         rec = np.delete(rec, i, axis=0)
     j += 1
-    #print("1",j)
+    if j%1000 == 0:
+        print("1", j)
 
 #%%
 i = 0
@@ -146,7 +153,8 @@ while True:
         rec = np.delete(rec, i, axis=0)
     i += 1
     j += 1
-    #print("2",j)
+    if j%1000 == 0:
+        print("2", j)
 
 #%%
 
@@ -185,6 +193,8 @@ kg_train, kg_testval = split_kg(kg, split = 0.5)
 kg_test, kg_val = train_test_split(kg_testval, test_size=0.5)
 
 # %%
+
+# at this point, train, valid and test are not all in order entities (we have to compensate later)
 train = np.concatenate((rec_train, kg_train), axis = 0)
 valid = np.concatenate((kg_val, rec_valid), axis = 0)
 test = np.concatenate((rec_test, kg_test), axis = 0)
@@ -232,6 +242,8 @@ print(f'{n_entities} entities and {n_relations} relations')
 for (dic, f) in zip([entities_to_id, relations_to_id, id_to_entities, id_to_relations], ['ent_id', 'rel_id', 'id_ent', 'id_rel']):
     pickle.dump(dic, open(os.path.join(path, f'{f}.pickle'), 'wb'))
 # %%
+# compensation for enities not being in order is taken place here
+
 to_skip = {'lhs': defaultdict(set), 'rhs': defaultdict(set)}
 
 for file in files:
@@ -297,6 +309,7 @@ out = open(os.path.join(path, 'new_to_skip.pickle'), 'wb')
 pickle.dump(to_skip_final, out)
 out.close()
 # %%
+# remember to replace "train.txt.pickle" with "new_train.txt.pickle" in the folder(same for valid and test)
 files = ['train.txt.pickle', 'valid.txt.pickle', 'test.txt.pickle']
 for file in files:
     #file_name = e.g., new_train
