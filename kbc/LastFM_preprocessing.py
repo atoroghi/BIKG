@@ -381,9 +381,9 @@ with open(os.path.join(path, 'valid.txt.pickle'), 'rb') as f:
 with open(os.path.join(path, 'test.txt.pickle'), 'rb') as f:
     test = pickle.load(f)
 
-train_rec = train[train[:, 1] == 47]
-test_rec = test[test[:, 1] == 47]
-valid_rec = valid[valid[:, 1] == 47]
+train_rec = train[train[:, 1] == np.max(train[:, 1])]
+test_rec = test[test[:, 1] == np.max(train[:, 1])]
+valid_rec = valid[valid[:, 1] == np.max(train[:, 1])]
 
 all_rec = np.concatenate((train_rec, test_rec, valid_rec), axis = 0)
 
