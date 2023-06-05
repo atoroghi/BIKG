@@ -50,7 +50,7 @@ if __name__ == '__main__':
         Iterates through all files with ".out" extension in the given directory and looks for the result with
         the greatest hits@10.
         """
-    k = 1
+    k = 10
     results = {'existential':{}, 'marginal UI':{}, 'instantiated':{}}
     for key in list(results.keys()):
         results[key]['cov_anchor'] = []
@@ -198,7 +198,7 @@ if __name__ == '__main__':
             table.add_row([sorted_dict['cov_anchor'][i], sorted_dict['cov_var'][i], sorted_dict['cov_target'][i], sorted_dict[f'hits{k}_0'][i], sorted_dict[f'hits{k}_1'][i],
                            sorted_dict[f'hits{k}_2'][i], sorted_dict[f'hits{k}_3'][i], sorted_dict[f'hits{k}_4'][i], sorted_dict[f'hits{k}_5'][i]])
 
-        #print(table)
+        print(table)
         #if quantifier == 'marginal UI':
         #    plot_sanity_check(sorted_dict, k)
     

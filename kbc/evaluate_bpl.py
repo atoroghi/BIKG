@@ -51,12 +51,15 @@ def evaluate_existential(env, scores, user_likes, non_items_array):
             pre_scores[i, filtered_indices] = -1e4
             pre_gt_rank = (pre_scores[i] > pre_scores[i, gt_ent]).sum().item() + 1
             pre_ranks[i//5] = pre_gt_rank
+            #print("pre", i,  pre_gt_rank)
 
         
         scores[i, filtered_indices] = -1e4
 
 
         gt_rank = (scores[i] > scores[i, gt_ent]).sum().item() + 1
+        #print("post", i, gt_rank)
+
 
         row = i // 5
         col = i % 5
