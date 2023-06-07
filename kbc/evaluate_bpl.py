@@ -40,25 +40,23 @@ def evaluate_existential(env, scores, user_likes, non_items_array):
     for i, query in tqdm.tqdm(enumerate(scores[:-1])):
         gt_ent = items[i]
 
-        filtered_indices = []
         filtered_ids = user_likes[users[i]]
 
         filtered_ids = (filtered_ids | non_items) - {gt_ent}
-        #filtered_ids = (filtered_ids) - {gt_ent}
+
+
         filtered_indices = np.array(list(filtered_ids)).astype(np.int32)
+        #print(filtered_indices.shape)
 
         if i % 5 == 0:
             pre_scores[i, filtered_indices] = -1e4
             pre_gt_rank = (pre_scores[i] > pre_scores[i, gt_ent]).sum().item() + 1
             pre_ranks[i//5] = pre_gt_rank
-            #print("pre", i,  pre_gt_rank)
-
-        
+  
         scores[i, filtered_indices] = -1e4
 
 
         gt_rank = (scores[i] > scores[i, gt_ent]).sum().item() + 1
-        #print("post", i, gt_rank)
 
 
         row = i // 5

@@ -1,2 +1,0 @@
-sbatch: error: Unable to open file COV_ANCHOR=1e-2,COV_VAR=1e-2,COV_TARGET=1e-2
-sbatch: error: Unable to open file COV_ANCHOR=1e-3,COV_VAR=1e-2,COV_TARGET=1e-2

@@ -1,3 +1,0 @@
-sbatch: NOTE: Your memory request of 32768M was likely submitted as 32G. Please note that Slurm interprets memory requests denominated in G as multiples of 1024M, not 1000M.
-sbatch: Please note that you have specified the --exclusive flag but have not asked for all of the cores available on a node.
-Submitted batch job 3122946

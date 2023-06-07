@@ -518,9 +518,9 @@ def preload_env(kbc_path, dataset, graph_type, mode="complete", kg_path=None,
                 #valid_tails_ent = [ent_id[x] for x in intersect]
                 valid_tails_ent = [x for x in intersect]
                 possible_tails = torch.tensor(np.array(valid_tails_ent).astype('int64'), device=device)
+
                 possible_heads_embeddings = kbc.model.entity_embeddings(possible_heads)
                 possible_tails_embeddings = kbc.model.entity_embeddings(possible_tails)
-
                 # gets the mean of the heads and tails
                 mean_head = torch.mean(possible_heads_embeddings, dim=0)
                 mean_tail = torch.mean(possible_tails_embeddings, dim=0)

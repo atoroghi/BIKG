@@ -360,9 +360,9 @@ with open(os.path.join(path, 'valid.txt.pickle'), 'rb') as f:
 with open(os.path.join(path, 'test.txt.pickle'), 'rb') as f:
     test = pickle.load(f)
 
-train_kg = train[train[:, 1] != 47]
-test_kg = test[test[:, 1] != 47]
-valid_kg = valid[valid[:, 1] != 47]
+train_kg = train[train[:, 1] != np.max(train[:, 1])]
+test_kg = test[test[:, 1] != np.max(train[:, 1])]
+valid_kg = valid[valid[:, 1] != np.max(train[:, 1])]
 
 kg_all = np.concatenate((train_kg, test_kg, valid_kg), axis = 0)
 test_with_kg = np.concatenate((test, kg_all), axis = 0)
@@ -370,7 +370,7 @@ test_with_kg = np.concatenate((test, kg_all), axis = 0)
 with open(os.path.join(path, 'test_with_kg.txt.pickle'), 'wb') as f:
     pickle.dump(test_with_kg, f)
 # %%
-np.savetxt('test_with_kg.txt', test_with_kg, delimiter='\t', fmt='%d')
+np.savetxt(os.path.join(path,'test_with_kg.txt'), test_with_kg, delimiter='\t', fmt='%d')
 # %%
 # Making the user likes dictionary for filtered evaluation
 
@@ -397,4 +397,25 @@ for line in all_rec:
 # %%
 out_file = open(path + '/user_likes.pickle', 'wb')
 pickle.dump(user_likes, out_file)
+# %%
+with open(os.path.join(path, 'train.txt.pickle'), 'rb') as f:
+    train = pickle.load(f)
+with open(os.path.join(path, 'valid.txt.pickle'), 'rb') as f:
+    valid = pickle.load(f)
+with open(os.path.join(path, 'test.txt.pickle'), 'rb') as f:
+    test = pickle.load(f)
+
+all_data = np.concatenate((train, test, valid), axis = 0) 
+all_ents = set(all_data[:, 0]) | set(all_data[:, 2])
+# %%
+train_rec = train[train[:, 1] == np.max(train[:, 1])]
+test_rec = test[test[:, 1] == np.max(train[:, 1])]
+valid_rec = valid[valid[:, 1] == np.max(train[:, 1])]
+
+all_rec = np.concatenate((train_rec, test_rec, valid_rec), axis = 0)
+items = set(all_rec[:,2])
+
+non_items = np.array(list(all_ents - items))
+# %%
+np.save(os.path.join(path, 'non_items_array.npy'), non_items)
 # %%

@@ -130,6 +130,7 @@ class ChaineDataset():
                     self.users.append(user)
                     self.items.append(item)
                     #print(test_triple)
+                    #sys.exit()
 
                     
                     # first part of the chain is the user and item
@@ -151,16 +152,18 @@ class ChaineDataset():
 
                         segmented_list = [(potential[0],x) for x in potential[1] if (x not in self.general_rels)]
                         continuations = [ [x,self.rhs_missing[x][:1]] for x in  segmented_list if x in self.rhs_missing]
-                        #print(continuations)
+                        
                         #sys.exit()
                         ans_1 = [potential[0]]
                         #print(len(continuations))
+                        #sys.exit()
                         
 
                         # we want to have at least 5 facts for each user, item pair
                         if len(continuations) < 5:
                             break
-                    
+                        #print(continuations)
+                        #sys.exit()
                         # raw_chains includes both parts of the chain. the first part is the original triple and the second part is the continuation of the chain
                         raw_chains = [
                             [ list(test_lhs_chain_1) +  ans_1,  [x[0][0], x[0][1], x[1]] ]
@@ -233,6 +236,8 @@ class ChaineDataset():
                     for potential_rel in potential_chain_rel:
                         for potential_tail in self.rhs_missing[potential_rel]:
                             potential_chain_cont.append(potential_rel + (potential_tail,)) 
+                    if len(potential_chain_cont)<5:
+                        continue
                     potential_chain_cont_clean = random.sample(potential_chain_cont, 5)
                     #print(potential_chain_cont_clean)
                     # ensuring that we'll have at least 5 facts for each user, item pair
@@ -286,6 +291,7 @@ class ChaineDataset():
                             
                             #for chain in self.type2_2chain:
                             #    print(chain.data['raw_chain'])
+                            #sys.exit()
 
                             print("Threshold for sample amount reached")
                             print("Finished sampling chains with legth 2 of type 2")
@@ -612,8 +618,9 @@ class ChaineDataset():
 
                         if len(self.type2_3chain) > self.threshold:
                             print((f'2_3:{len(self.type2_3chain)}'))
-                            # for chain in self.type2_3chain:
-                            #     print(chain.data['raw_chain'])
+                            #for chain in self.type2_3chain:
+                            #    print(chain.data['raw_chain'])
+                            #sys.exit()
 
                             print("Threshold for sample amount reached")
                             print("Finished sampling chains with legth 3 of type 2")
@@ -836,7 +843,7 @@ def load_chain_data(data_path):
 
 if __name__ == "__main__":
 
-    big_datasets = ['amazon-book', 'yelp2018', 'Movielens', 'last-fm', 'FB15k']
+    big_datasets = ['amazon-book', 'yelp2018', 'Movielens', 'LastFM', 'FB15k']
     datasets = big_datasets
 
     parser = argparse.ArgumentParser(

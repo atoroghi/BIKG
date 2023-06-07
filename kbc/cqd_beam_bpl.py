@@ -182,6 +182,7 @@ if __name__ == "__main__":
     rel_id = pickle.load(open(osp.join(args.path, 'rel_id.pickle'), 'rb'))
     non_items_array = np.load(osp.join(args.path, 'non_items_array.npy'))
 
+
     print("Beam:")
 
 
