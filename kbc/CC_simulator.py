@@ -10,10 +10,10 @@ if __name__ == '__main__':
     # Open a file for writing
 
     
-    #cov_anchors = [1e5]
+    cov_anchors = [1e5]
     #cov_vars = [1e5]
     #cov_targets = [1e5]
-    cov_anchors = [1e-5,1e-4,1e-3,1e-2, 1e-1,1e1,1e2,1e3,1e4,1e5]
+    #cov_anchors = [1e-5,1e-4,1e-3,1e-2, 1e-1,1e1,1e2,1e3,1e4,1e5]
     cov_vars = [1e-5,1e-4,1e-3,1e-2, 1e-1,1e1,1e2,1e3,1e4,1e5]
     cov_targets = [1e-5,1e-4,1e-3,1e-2, 1e-1,1e1,1e2,1e3,1e4,1e5]
 
