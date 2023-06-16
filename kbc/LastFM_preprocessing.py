@@ -27,13 +27,16 @@ def split_kg(kg, split = 0.2):
     test_start = int((1-split)*kg.shape[0])
     #making sure that all relations are present in the train set
     #while (len(set(kg[:test_start,1])) < num_rels) or (len(set(kg[:test_start, 0]) | set(kg[:test_start, 2]))<num_ents):
-    while (len(set(kg[:test_start,1])) < num_rels):
+    
+    # TODO: modify this line for one hop KGs
+    while (len(set(kg[:test_start,1])) < num_rels-5):
         np.random.shuffle(kg)
     kg_train = kg[:test_start]
     kg_test = kg[test_start:]
     # eliminate rows from kg_test that have entities not present in kg_train
     kg_test = kg_test[np.isin(kg_test[:, 0], kg_train[:, 0])]
     kg_test = kg_test[np.isin(kg_test[:, 2], kg_train[:, 2])]
+    kg_test = kg_test[np.isin(kg_test[:, 1], kg_train[:, 1])]
     return kg_train , kg_test
 
 def add_inverse(rec, kg):
@@ -53,13 +56,17 @@ def add_inverse(rec, kg):
     return new_rec, new_kg
     
 #%%   
-#dataset = 'Movielens'
-dataset = 'LastFM'
+#dataset = 'Movielens (no_rev)'
+#dataset = 'LastFM'
 #dataset = 'AmazonBook'
+dataset = 'Movielens_twohop'
 from pathlib import Path
 import pickle
+
 path = os.path.join(os.getcwd() ,'..', 'data', dataset)
-#path = os.path.join(os.getcwd() , 'data', dataset)
+if not os.path.exists(path):
+    path = os.path.join(os.getcwd() , 'data', dataset)
+
 root = Path(path)
 print(root)
 print(os.listdir(root))    
@@ -68,13 +75,23 @@ kg_path_test = os.path.join(root, 'kg/test.dat')
 kg_path_valid = os.path.join(root, 'kg/valid.dat')
 rec_path = os.path.join(root,'rs/ratings.txt')
 kg = np.genfromtxt(kg_path, delimiter='\t', dtype=np.int32)
-kg_test = np.genfromtxt(kg_path_test, delimiter='\t', dtype=np.int32)
-kg_valid = np.genfromtxt(kg_path_valid, delimiter='\t', dtype=np.int32)
+
+
 # in case of LFM, there are entities in test and valid that are not in train
 if dataset == 'LastFM':
+    kg_test = np.genfromtxt(kg_path_test, delimiter='\t', dtype=np.int32)
+    kg_valid = np.genfromtxt(kg_path_valid, delimiter='\t', dtype=np.int32)
     kg = np.concatenate((kg, kg_test, kg_valid), axis=0)
 
 rec = np.genfromtxt(rec_path, delimiter='\t', dtype=np.int32)
+
+#%%
+# reduce the no of entities in the too large kg
+
+column3_counts = np.bincount(kg[:, 2])
+values_to_delete = np.where((column3_counts < 5))[0]
+kg = kg[ ~np.isin(kg[:, 2], values_to_delete)]
+
 #%%
 n_e = len(set(kg[:, 0]) | set(kg[:, 2]))
 print("number of entities: ", n_e)
@@ -84,7 +101,8 @@ print("number of relations: ", n_r)
 rec = rec[:,:3] # remove time col.
 rec[:,2] = rec[:,2] >= 4 # binary ratings, 0 if [0, 4), 1 if [4, 5] 
 rec = rec[rec[:,2] == 1] # select only positive ratings
-rec[:,2] = n_r # set redundant col to the last relationship
+#rec[:,2] = n_r # set redundant col to the last relationship
+rec[:,2] = np.max(kg[:,1])+1 # set redundant col to the last relationship
 
 rec = rec[:, [0,2,1]]
 #%%
@@ -104,7 +122,7 @@ with open(item2kg_path) as f:
     for line in f:
         ml_id = re.search('(.+?)\t', line)
         fb_http = re.search('\t(.+?)\n', line)
-        if dataset == 'Movielens' or dataset == 'LastFM':
+        if dataset == 'Movielens' or dataset == 'LastFM' or dataset == 'Movielens_twohop':
             ml2fb_map.update({int(ml_id.group(1)) : fb_http.group(1)})
 
 #%%
@@ -140,12 +158,9 @@ while True:
     else:
         rec = np.delete(rec, i, axis=0)
     j += 1
-    if j%1000 == 0:
+    if j%100000 == 0:
         print("1", j)
-
-#%%
-i = 0
-j = 0
+4j = 0
 while True:
     if i == rec.shape[0]:
         break
@@ -153,7 +168,7 @@ while True:
         rec = np.delete(rec, i, axis=0)
     i += 1
     j += 1
-    if j%1000 == 0:
+    if j%1000000 == 0:
         print("2", j)
 
 #%%
@@ -178,7 +193,7 @@ NEW_USER_IDS = new_ids
 #%%
 np.save(os.path.join(root,'rs/rec_processed.npy'), rec, allow_pickle=True)
 #%%
-#rec = np.load(os.path.join(root,'rs/rec_raw.npy'), allow_pickle=True)
+rec = np.load(os.path.join(root,'rs/rec_processed.npy'), allow_pickle=True)
 #%%
 # we're not inversing anymore. It's incorrect with SimplE
 #rec, kg = add_inverse(rec, kg)
