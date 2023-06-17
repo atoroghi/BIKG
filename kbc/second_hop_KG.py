@@ -169,7 +169,7 @@ for line in f1:
 f1.close()
 f2.close()
 # %%
-# update the r_map file and e_map file
+# update the e_map file
 
 f = open(os.path.join(root, 'kg', 'second_hop_kg_filtered.dat'), 'r')
 f1 = open(os.path.join(root, 'kg', 'r_map.dat'), 'a')
@@ -217,6 +217,7 @@ for line in f:
     f5.write(str(h_id) + "\t" + str(r_id) + "\t" + str(t_id) + "\n")
 f.close(); f1.close(); f2.close(); f5.close()
 # %%
+# update the r_map file
 f = open(os.path.join(root, 'kg', 'r_map_twohop.dat'), 'w')
 for r in existing_rels.keys():
     f.write(str(existing_rels[r]) + "\t" + "<http://rdf.freebase.com/ns/"+ r +">" + "\n")

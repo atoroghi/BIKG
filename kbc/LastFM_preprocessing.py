@@ -133,7 +133,10 @@ fb2id_map = {}
 with open(emap_path) as f:
     for kg_id, line in enumerate(f):
         fb_http = re.search('\t(.+?)\n', line)
-        fb2id_map.update({fb_http.group(1) : kg_id})
+        try:
+            fb2id_map.update({fb_http.group(1) : kg_id})
+        except:
+            print(f'{kg_id} not in kg')
         id2html_map.update({kg_id : fb_http.group(1)})
 
 #%%
@@ -160,7 +163,7 @@ while True:
     j += 1
     if j%100000 == 0:
         print("1", j)
-4j = 0
+j = 0
 while True:
     if i == rec.shape[0]:
         break
