@@ -57,6 +57,7 @@ with open(r_map_path) as f:
         rel_rdf2id[string[start_index:end_index]] = int(triple[0])
 
 # %%
+# checks if an rdf link is in the set (mids) provided
 def check(rdf_link, mids):
     start_index = rdf_link.rfind("/") + 1
     end_index = rdf_link.rfind(">")
@@ -67,6 +68,7 @@ def check(rdf_link, mids):
         return 0
 
 # %%
+# gets the id of each relation or entity (if it's already an id, it returns it as it is)
 def get_id_ent(string, ent_or_rel):
     start_index = string.rfind("/") + 1
     end_index = string.rfind(">")
@@ -79,6 +81,7 @@ def get_id_ent(string, ent_or_rel):
         except: return mid
 
 # %%
+# opens the freebase KG and writes the second hop KG
 freebase_path = os.path.join(root,'..', 'freebase-rdf-latest.gz')
 second_hop_kg_name = 'second_hop_kg.dat' 
 f = gzip.GzipFile(freebase_path, 'r')
@@ -96,6 +99,7 @@ for line in io.TextIOWrapper(f, encoding='utf-8'):
         continue
     line2 = line.split("\t")
 
+    # if the head is an item, we want the triple
     if check(line2[0], non_item_rdfs) == 1:
         h , r, t = get_id_ent(line2[0], 'ent'), get_id_ent(line2[1], 'rel'), get_id_ent(line2[2], 'ent')
         f2.write(str(h) + "\t" + str(r) + "\t" + str(t) + "\n")
