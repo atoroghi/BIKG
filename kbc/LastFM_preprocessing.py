@@ -163,6 +163,8 @@ while True:
     j += 1
     if j%100000 == 0:
         print("1", j)
+#%%
+i=0
 j = 0
 while True:
     if i == rec.shape[0]:
@@ -174,7 +176,7 @@ while True:
     if j%1000000 == 0:
         print("2", j)
 
-#%%
+
 
 
 #%%
