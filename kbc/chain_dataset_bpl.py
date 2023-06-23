@@ -276,12 +276,12 @@ class ChaineDataset():
                         new_chain.data['raw_chain'] = chain
                         new_chain.data['anchors'].append(chain[0][0])
                         new_chain.data['anchors'].append(chain[1][0])
-
+                        new_chain.data['optimisable'].append(chain[0][0])
                         new_chain.data['optimisable'].append(chain[0][2])
                         new_chain.data['optimisable'].append(chain[2][0])
 
-                        new_chain.data['user'] = chain[2][0]
-                        new_chain.data['item'] = chain[2][2]
+                        new_chain.data['user'] = chain[0][0]
+                        new_chain.data['item'] = chain[0][2]
 
                         self.type2_2chain.append(new_chain)
                         #print(len(self.type2_2chain))
