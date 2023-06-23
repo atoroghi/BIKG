@@ -208,7 +208,7 @@ rec_train, rec_testval = split_kg(rec, split = 0.5)
 
 rec_test, rec_valid = train_test_split(rec_testval, test_size=0.5)
 # split the rec data into train, val and test
-
+# %%
 kg_train, kg_testval = split_kg(kg, split = 0.5)
 kg_test, kg_val = train_test_split(kg_testval, test_size=0.5)
 
