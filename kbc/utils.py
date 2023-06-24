@@ -607,11 +607,11 @@ def preload_env(kbc_path, dataset, graph_type, mode="complete", kg_path=None,
             chain2 = kbc.model.get_full_embeddigns(part2)
             chain3 = kbc.model.get_full_embeddigns(part3)
 
-            lhs_norm = 0.0
-            for lhs_emb in chain1[0]:
-                lhs_norm+=torch.norm(lhs_emb)
+            #lhs_norm = 0.0
+            #for lhs_emb in chain1[0]:
+            #    lhs_norm+=torch.norm(lhs_emb)
 
-            lhs_norm/= len(chain1[0])
+            #lhs_norm/= len(chain1[0])
             chains = [chain1,chain2, chain3]
             parts = [part1, part2, part3]
 
@@ -626,6 +626,8 @@ def preload_env(kbc_path, dataset, graph_type, mode="complete", kg_path=None,
                 # we also need the relation of the second part of the chain for possible tails
                 rel_2 = int(part2[i][1])
                 rel_3 = int(part3[i][1])
+                valid_heads_ent = [x for x in valid_heads[rel_1]]
+                possible_heads = torch.tensor(np.array(valid_heads_ent).astype('int64') , device=device)
                 # possible tails must be possible for both relations in the case of QA
                 # for recommendation, since the first head is user, its tail (item) must be valid for the second relation's head
                 #first_intersect = np.intersect1d(np.array(valid_tails[rel_1]), np.array(valid_tails[rel_2]))
@@ -634,9 +636,12 @@ def preload_env(kbc_path, dataset, graph_type, mode="complete", kg_path=None,
                 #valid_tails_ent = [ent_id[x] for x in second_intersect]
                 valid_tails_ent = second_intersect
                 possible_tails = torch.tensor(second_intersect.astype('int64'), device=device)
+                possible_heads_embeddings = kbc.model.entity_embeddings(possible_heads)
                 possible_tails_embeddings = kbc.model.entity_embeddings(possible_tails)
                 # get means of the tails
+                mean_head = torch.mean(possible_heads_embeddings, dim=0)
                 mean_tail = torch.mean(possible_tails_embeddings, dim=0)
+                part1_heads_emb[i] = mean_head
                 part1_tails_emb[i] = mean_tail
 
             possible_tails_emb = [part1_tails_emb]
@@ -1113,8 +1118,7 @@ def preload_env(kbc_path, dataset, graph_type, mode="complete", kg_path=None,
             users = users
             items = items
 
-            target_ids, keys = get_keys_and_targets([part1, part2, part3], targets, graph_type)
-
+            user_ids, item_ids, keys = get_keys_and_targets_bpl([part1, part2, part3, part4], users, items, graph_type)
 
             if not chain_instructions:
                 chain_instructions = create_instructions([part1[0], part2[0], part3[0]])
@@ -1129,20 +1133,22 @@ def preload_env(kbc_path, dataset, graph_type, mode="complete", kg_path=None,
 
             part3 = np.array(part3)
             part3 = torch.tensor(part3.astype('int64'), device=device)
+            part4 = np.array(part4)
+            part4 = torch.tensor(part4.astype('int64'), device=device)
 
             chain1 = kbc.model.get_full_embeddigns(part1)
             chain2 = kbc.model.get_full_embeddigns(part2)
             chain3 = kbc.model.get_full_embeddigns(part3)
+            chain4 = kbc.model.get_full_embeddigns(part4)
 
+            #lhs_norm = 0.0
+            #for lhs_emb in chain1[0]:
+            #    lhs_norm+=torch.norm(lhs_emb)
 
-            lhs_norm = 0.0
-            for lhs_emb in chain1[0]:
-                lhs_norm+=torch.norm(lhs_emb)
+            #lhs_norm/= len(chain1[0])
 
-            lhs_norm/= len(chain1[0])
-
-            chains = [chain1,chain2,chain3]
-            parts = [part1, part2, part3]
+            chains = [chain1,chain2,chain3,chain4]
+            parts = [part1, part2, part3, part4]
 
             # from here on, my code for getting the mean of the head and tail for each part
             part1_heads_emb = torch.zeros(chain1[0].shape, device=device)
@@ -1153,34 +1159,44 @@ def preload_env(kbc_path, dataset, graph_type, mode="complete", kg_path=None,
                 rel_1 = int(part1[i][1])
                 # we also need the relation of the second part of the chain for possible tails
                 rel_2 = int(part2[i][1])
+                rel_3 = int(part3[i][1])
                 # gets the possible heads and tails of it
-                possible_heads = torch.tensor(np.array(valid_heads[rel_1]).astype('int64') , device=device)
+                valid_heads_ent = [x for x in valid_heads[rel_1]]
+                possible_heads = torch.tensor(np.array(valid_heads_ent).astype('int64') , device=device)
                 # possible tails of this relation should also be possible heads of the rel of the second part of the chain
-                possible_tails = torch.tensor(np.intersect1d(np.array(valid_tails[rel_1]), np.array(valid_heads[rel_2])).astype('int64'), device=device)
+                first_intersect = np.intersect1d(np.array(valid_tails[rel_1]), np.array(valid_heads[rel_2]))
+                second_intersect = np.intersect1d(np.array(valid_heads[rel_3]), first_intersect)
+                valid_tails_ent = second_intersect
+                possible_tails = torch.tensor(second_intersect.astype('int64'), device=device)
+                possible_heads_embeddings = kbc.model.entity_embeddings(possible_heads)
                 possible_tails_embeddings = kbc.model.entity_embeddings(possible_tails)
-
                 # gets the mean of the heads
+                mean_head = torch.mean(possible_heads_embeddings, dim=0)
                 mean_tail = torch.mean(possible_tails_embeddings, dim=0)
+                part1_heads_emb[i] = mean_head
                 part1_tails_emb[i] = mean_tail
 
-            
             #for part 2:
             part2_heads_emb = part1_tails_emb.clone()
+            part3_heads_emb = part1_tails_emb.clone()
             part2_tails_emb = torch.zeros(chain1[0].shape, device=device)
+            part3_tails_emb = torch.zeros(chain1[0].shape, device=device)
 
-            for i in range(part2.shape[0]):
-                rel_2 = int(part2[i][1])
+            for i in range(part3.shape[0]):
                 rel_3 = int(part3[i][1])
+                rel_4 = int(part4[i][1])
                 # possible tails must be possible for both relations
-                possible_tails = torch.tensor(np.intersect1d(np.array(valid_tails[rel_2]), np.array(valid_tails[rel_3])).astype('int64'), device=device)
-                possible_tails_embeddings = kbc.model.entity_embeddings(possible_tails)
+                intersect = np.intersect1d(np.array(valid_tails[rel_3]), np.array(valid_heads[rel_4]))
+                valid_tails_ent = [x for x in intersect]
+                possible_tails = torch.tensor(np.array(valid_tails_ent).astype('int64'), device=device)
                 # gets the mean of the tails
+                possible_tails_embeddings = kbc.model.entity_embeddings(possible_tails)
                 mean_tail = torch.mean(possible_tails_embeddings, dim=0)
-                part2_tails_emb[i] = mean_tail
-            part3_heads_emb = torch.zeros(chain3[0].shape, device=device)
-            part3_tails_emb = torch.zeros(chain3[0].shape, device=device)
-            possible_heads_emb = [part1_heads_emb, part2_heads_emb, part3_heads_emb]
-            possible_tails_emb = [part1_tails_emb, part2_tails_emb, part3_tails_emb]
+                part3_tails_emb[i] = mean_tail
+            part4_heads_emb = part3_tails_emb.clone()
+            part4_tails_emb = torch.zeros(chain4[0].shape, device=device)
+            possible_heads_emb = [part1_heads_emb, part2_heads_emb, part3_heads_emb, part4_heads_emb]
+            possible_tails_emb = [part1_tails_emb, part2_tails_emb, part3_tails_emb, part4_tails_emb]
         elif QuerDAG.TYPE4_3.value == graph_type:
             raw = dataset.type4_3chain
 
