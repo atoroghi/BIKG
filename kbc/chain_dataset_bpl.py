@@ -79,8 +79,8 @@ class ChaineDataset():
             #self.__type1_3chains__()
             #self.__type1_4chains__()
             #self.__type2_3chains__()
-            #self.__type3_3chains__()
-            self.__type4_3chains__() 
+            self.__type3_3chains__()
+            #self.__type4_3chains__() 
 
         except RuntimeError as e:
             print(e)
@@ -402,8 +402,8 @@ class ChaineDataset():
                         self.type1_3chain.append(new_chain)
                         if len(self.type1_3chain) > self.threshold:
                             print(f'1_3:{len(self.type1_3chain)}')
-                            #for chain in  self.type1_3chain[:20]:
-                                #print(chain.data['raw_chain']) 
+                            for chain in  self.type1_3chain[:20]:
+                                print(chain.data['raw_chain']) 
                             print("Threshold for sample amount reached")
                             print("Finished sampling chains with legth 3 of type 1")
                             return
