@@ -340,6 +340,13 @@ for file in files:
 
 # %%
 # forming the type checking dictionaries
+with open(os.path.join(path, 'train.txt.pickle'), 'rb') as f:
+    train = pickle.load(f)
+with open(os.path.join(path, 'valid.txt.pickle'), 'rb') as f:
+    valid = pickle.load(f)
+with open(os.path.join(path, 'test.txt.pickle'), 'rb') as f:
+    test = pickle.load(f)
+
 all_data = np.concatenate((train, test, valid), axis = 0)
 valid_heads = {}
 valid_tails = {}
