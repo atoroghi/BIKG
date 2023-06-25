@@ -1049,11 +1049,11 @@ def preload_env(kbc_path, dataset, graph_type, mode="complete", kg_path=None,
             chain4 = kbc.model.get_full_embeddigns(part4)
 
 
-            lhs_norm = 0.0
-            for lhs_emb in chain1[0]:
-                lhs_norm+=torch.norm(lhs_emb)
+            #lhs_norm = 0.0
+            #for lhs_emb in chain1[0]:
+            #    lhs_norm+=torch.norm(lhs_emb)
 
-            lhs_norm/= len(chain1[0])
+            #lhs_norm/= len(chain1[0])
 
             chains = [chain1,chain2,chain3,chain4]
             parts = [part1,part2,part3,part4]
@@ -1125,7 +1125,7 @@ def preload_env(kbc_path, dataset, graph_type, mode="complete", kg_path=None,
             user_ids, item_ids, keys = get_keys_and_targets_bpl([part1, part2, part3, part4], users, items, graph_type)
 
             if not chain_instructions:
-                chain_instructions = create_instructions([part1[0], part2[0], part3[0]])
+                chain_instructions = create_instructions_bpl([part1[0], part2[0], part3[0]])
 
             device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
@@ -1250,16 +1250,16 @@ def preload_env(kbc_path, dataset, graph_type, mode="complete", kg_path=None,
 
             device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
             part1 = np.array(part1)
-            part1 = torch.from_numpy(part1.astype('int64')).cuda()
+            part1 = torch.tensor(part1.astype('int64'), device=device)
 
             part2 = np.array(part2)
-            part2 = torch.from_numpy(part2.astype('int64')).cuda()
+            part2 = torch.tensor(part2.astype('int64'), device=device)
 
             part3 = np.array(part3)
-            part3 = torch.from_numpy(part3.astype('int64')).cuda()
+            part3 = torch.tensor(part3.astype('int64'), device=device)
 
             part4 = np.array(part4)
-            part4 = torch.from_numpy(part4.astype('int64')).cuda()
+            part4 = torch.tensor(part4.astype('int64'), device=device)
 
             chain1 = kbc.model.get_full_embeddigns(part1)
             chain2 = kbc.model.get_full_embeddigns(part2)
