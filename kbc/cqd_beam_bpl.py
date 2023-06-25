@@ -62,6 +62,8 @@ explain=False, user_likes=None, ent_id=None, quantifier=None, valid_heads=None, 
         part1, part2 = env.parts
     elif '2' in env.chain_instructions[-1][-1]:
         part1, part2, part3 = env.parts
+    elif '3' in env.chain_instructions[-1][-1]:
+        part1, part2, part3, part4 = env.parts
 
     kbc = env.kbc
     chains = env.chains
