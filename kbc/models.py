@@ -1718,16 +1718,15 @@ class KBCModel(nn.Module, ABC):
             chain1, chain2 = chains[0], chains[1]
             lhs_1_emb, rel_1_emb, rhs_1_emb, lhs_2_emb, rel_2_emb, rhs_2_emb = chain1[0], chain1[1], chain1[2], chain2[0], chain2[1], chain2[2]
         
-        elif env.graph_type == '2_2':
+        elif env.graph_type == '2_2' or env.graph_type == '1_3':
             part1, part2, part3 = parts[0], parts[1], parts[2]
             chain1, chain2, chain3 = chains[0], chains[1], chains[2]
             lhs_1_emb, rel_1_emb, rhs_1_emb, lhs_2_emb, rel_2_emb, rhs_2_emb, lhs_3_emb, rel_3_emb, rhs_3_emb = chain1[0], chain1[1], chain1[2], chain2[0], chain2[1], chain2[2], chain3[0], chain3[1], chain3[2]
-        elif env.graph_type == '2_3':
+        elif env.graph_type == '2_3' or env.graph_type == '1_4' or env.graph_type == '3_3' or env.graph_type == '4_3':
             part1, part2, part3, part4 = parts[0], parts[1], parts[2], parts[3]
             chain1, chain2, chain3, chain4 = chains[0], chains[1], chains[2], chains[3]
             lhs_1_emb, rel_1_emb, rhs_1_emb, lhs_2_emb, rel_2_emb, rhs_2_emb, lhs_3_emb, rel_3_emb, rhs_3_emb, lhs_4_emb, rel_4_emb, rhs_4_emb = \
                 chain1[0], chain1[1], chain1[2], chain2[0], chain2[1], chain2[2], chain3[0], chain3[1], chain3[2], chain4[0], chain4[1], chain4[2]
-
 
         if not 'SimplE' in str(self.model_type):
             raise NotImplementedError
