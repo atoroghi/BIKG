@@ -25,11 +25,11 @@ def run(kbc_path, dataset_hard, dataset_name, t_norm='min', candidates=3,
   cov_anchor=None, cov_var=None, cov_target=None):
     experiments = [t.value for t in QuerDAG]
     experiments.remove(QuerDAG.TYPE1_1.value)
-    #experiments.remove(QuerDAG.TYPE1_2.value)
+    experiments.remove(QuerDAG.TYPE1_2.value)
     experiments.remove(QuerDAG.TYPE2_2.value)
     experiments.remove(QuerDAG.TYPE2_2_disj.value)
     experiments.remove(QuerDAG.TYPE1_3.value)
-    experiments.remove(QuerDAG.TYPE1_4.value)
+    #experiments.remove(QuerDAG.TYPE1_4.value)
     experiments.remove(QuerDAG.TYPE2_3.value)
     experiments.remove(QuerDAG.TYPE3_3.value)
     experiments.remove(QuerDAG.TYPE4_3.value)
@@ -58,11 +58,12 @@ explain=False, user_likes=None, ent_id=None, quantifier=None, valid_heads=None, 
     #env = preload_env(kbc_path, dataset_complete, query_type, mode='complete', explain=explain, valid_heads=valid_heads, valid_tails=valid_tails)
 
     # tells us how many parts there are in each query
-    if '1' in env.chain_instructions[-1][-1]:
+
+    if len(env.parts) == 2:
         part1, part2 = env.parts
-    elif '2' in env.chain_instructions[-1][-1]:
+    elif len(env.parts) == 3:
         part1, part2, part3 = env.parts
-    elif '3' in env.chain_instructions[-1][-1]:
+    elif len(env.parts) == 4:
         part1, part2, part3, part4 = env.parts
 
     kbc = env.kbc

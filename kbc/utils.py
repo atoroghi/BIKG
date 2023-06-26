@@ -45,8 +45,8 @@ def create_instructions_bpl(chains,graph_type):
                 #instructions.append("hop_0_1")
                 #instructions.append("hop_1_2")
                 #instructions.append("hop_2_3")
-                instructions.append("hop_0_1")
-                instructions.append("hop_1_2")
+                instructions.append("hop_0_1_2")
+                #instructions.append("hop_1_2")
             elif graph_type == '3_3':
                 #instructions.append("hop_0_1")
                 #instructions.append("intersect_1_2_3")

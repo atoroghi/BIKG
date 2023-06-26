@@ -1986,17 +1986,24 @@ class KBCModel(nn.Module, ABC):
                     # this if for the case of projection
                     if 'hop' in inst:
                         if len(inst.split("_")) == 2:
+                            # this is 2p where we only have one hop
                             ind_1 = int(inst.split("_")[-1])
                             indices = [ind_1]
 
                             #  ATTENTION! this is last hop only for the case of neglecting the user
                             last_hop = True
-                        else:
+                        elif len(inst.split("_")) == 3:
 
                             ind_1 = int(inst.split("_")[-2])
                             ind_2 = int(inst.split("_")[-1])
 
                             indices = [ind_1, ind_2]
+                            last_hop = False
+                        elif len(inst.split("_")) == 4:
+                            ind_1 = int(inst.split("_")[-3])
+                            ind_2 = int(inst.split("_")[-2])
+                            ind_3 = int(inst.split("_")[-1])
+                            indices = [ind_1, ind_2, ind_3]
                             last_hop = False
                         # indices = [0, 1]
                         # each index is one hop
@@ -2007,7 +2014,6 @@ class KBCModel(nn.Module, ABC):
                         
                         for hop_num, ind in enumerate(indices):
                             
-                            # here!
                             # print("HOP")
                             # print(candidate_cache.keys())
                             last_step = (inst_ind == len(
@@ -2019,21 +2025,22 @@ class KBCModel(nn.Module, ABC):
                             # [a, p, X], [X, p, Y][Y, p, Z]
 
                             # takes one of the lhs, rel (their embeddings)
-                            if lhs is not None:
-                                lhs = lhs[batch[0]:batch[1]]
+                            if rhs is not None:
+                                rhs = rhs[batch[0]:batch[1]]
 
                             else:
                                 # print("MTA BRAT")
-                                batch_scores, lhs_3d = candidate_cache[f"lhs_{ind}"]
-                                lhs = lhs_3d.view(-1, embedding_size)
+                                batch_scores, rhs_3d = candidate_cache[f"rhs_{ind}"]
+                                rhs = rhs_3d.view(-1, embedding_size)
                             rel = rel[batch[0]:batch[1]]
                             rel = rel.view(-1, 1,
                                            embedding_size).repeat(1, nb_branches, 1)
                             rel = rel.view(-1, embedding_size)
-                            if f"rhs_{ind}" not in candidate_cache:
+                            if f"lhs_{ind}" not in candidate_cache:
                                 # gets best candidates for the rhs of this hop and the scores
-                                z_scores, rhs_3d = self.get_best_candidates(
-                                    rel, lhs, None, candidates, last_step, env if explain else None)
+                                z_scores, lhs_3d = self.get_best_candidates(
+                                    rel, rhs, None, candidates, last_step, None, 'rhs')
+
                                 # z_scores : tensor of shape [Num_queries * Candidates^K]
                                 # rhs_3d : tensor of shape [Num_queries, Candidates^K, Embedding_size]
 
@@ -2043,36 +2050,38 @@ class KBCModel(nn.Module, ABC):
                                     z_scores_1d = torch.sigmoid(z_scores_1d)
 
                                 # B * S
-                                nb_sources = rhs_3d.shape[0]*rhs_3d.shape[1]
+                                nb_sources = lhs_3d.shape[0]*lhs_3d.shape[1]
                                 nb_branches = nb_sources // batch_size
                                 # if the batch_score is None, we initialize it with the candidates scores (since there's just one hop). otherwise, the t-norm is applied
                                 if not last_step:
                                     batch_scores = z_scores_1d if batch_scores is None else objective(
                                         z_scores_1d, batch_scores.view(-1, 1).repeat(1, candidates).view(-1), t_norm)
                                 else:
-                                    nb_ent = rhs_3d.shape[1]
+                                    nb_ent = lhs_3d.shape[1]
                                     batch_scores = z_scores_1d if batch_scores is None else objective(
                                         z_scores_1d, batch_scores.view(-1, 1).repeat(1, nb_ent).view(-1), t_norm)
                                 # candidate_cache stores the scores and the candidate embeddings for each rhs
-                                candidate_cache[f"rhs_{ind}"] = (
-                                    batch_scores, rhs_3d)
+                                candidate_cache[f"lhs_{ind}"] = (
+                                    batch_scores, lhs_3d)
                                 if not last_hop:
-                                    # candidate_cache of the rhs of this hop is the lhs of the next hop
-                                    candidate_cache[f"lhs_{indices[hop_num+1]}"] = (
-                                        batch_scores, rhs_3d)
+                                    # candidate_cache of the lhs of this hop is the rhs of the next hop
+                                    # remember that since we've reverted the chains, this should be hop_num +1 not -1
+                                    candidate_cache[f"rhs_{indices[hop_num+1]}"] = (
+                                        batch_scores, lhs_3d)
 
                             else:
-                                # if we already have the rhs of this hop, we are in the last hop (so no more lhs)
-                                batch_scores, rhs_3d = candidate_cache[f"rhs_{ind}"]
-                                candidate_cache[f"lhs_{ind+1}"] = (
-                                    batch_scores, rhs_3d)
+                                # if we already have the lhs of this hop, we are in the last hop (so no more rhs)
+                                batch_scores, lhs_3d = candidate_cache[f"lhs_{ind}"]
+                                candidate_cache[f"rhs_{ind+1}"] = (
+                                    batch_scores, lhs_3d)
                                 last_hop = True
                                 del lhs, rel
                                 # #torch.cuda.empty_cache() 
                                 continue
-
-                            last_hop = True
-                            del lhs, rel, rhs, rhs_3d, z_scores_1d, z_scores
+                            
+                            if hop_num == indices[-2]:
+                                last_hop = True
+                            del lhs, rel, rhs, lhs_3d, z_scores_1d, z_scores
                             # #torch.cuda.empty_cache()
 
                     elif 'inter' in inst:
@@ -2191,7 +2200,8 @@ class KBCModel(nn.Module, ABC):
                 # S ==  K**(V-1)
 
                 scores_2d = batch_scores.view(batch_size, -1, nb_ent)
-                # print(scores_2d.shape)
+                print(scores_2d.shape)
+                sys.exit()
                 # [1,candidates, nb_ent]
                 # res is the max score for each entity among the candidates
                 res, _ = torch.max(scores_2d, dim=1)
