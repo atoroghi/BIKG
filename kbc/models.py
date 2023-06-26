@@ -1763,179 +1763,447 @@ class KBCModel(nn.Module, ABC):
 
         return scores
 
+    # def query_answering_BF_Exist(self, env: DynKBCSingleton, candidates: int = 5, t_norm: str = 'min', 
+    # batch_size=1, scores_normalize=0, explain=False, user_belief=None):
+
+    #     res = None
+    #     if 'disj' in env.graph_type:
+    #         objective = self.t_conorm
+    #     else: 
+    #         objective = self.t_norm
+    #     chains, chain_instructions = env.chains, env.chain_instructions
+    #     nb_queries, embedding_size = chains[0][0].shape[0], chains[0][0].shape[1]
+    #     scores = None
+    #     batches = make_batches(nb_queries, batch_size)
+    #     # batches = [(0, 1), (1, 2), ...)]
+    #     for i, batch in enumerate(tqdm.tqdm(batches)):
+    #         nb_branches = 1
+    #         nb_ent = 0
+    #         batch_scores = None
+    #         candidate_cache = {}
+    #         batch_size = batch[1] - batch[0]
+    #         dnf_flag = False
+    #         if 'disj' in env.graph_type:
+    #             dnf_flag = True
+
+
+    #         for inst_ind, inst in enumerate(chain_instructions):
+
+    #             # inst = "hop_0_1"
+    #             # inst_ind = 0
+    #             with torch.no_grad():
+    #                 # in fact our projection is like an intersection for the cqd (item has a fact and is 
+    #                 # liked by the user)
+    #                 if 'hop' in inst or 'inter' in inst:
+
+    #                     ind_1 = int(inst.split("_")[-2])
+    #                     ind_2 = int(inst.split("_")[-1])
+    #                     # indices = [0,1]
+    #                     indices = [ind_1, ind_2]
+
+    #                     if objective == self.t_norm and dnf_flag:
+    #                         objective = self.t_conorm
+    #                     if 'inter' in inst:
+
+    #                         if len(inst.split("_")) == 4:
+    #                             ind_1 = 0
+    #                             ind_2 = int(inst.split("_")[-2])
+    #                             ind_3 = int(inst.split("_")[-1])
+    #                             indices = [ind_1, ind_2, ind_3]
+    #                         elif len(inst.split("_")) == 5:
+    #                             ind_1 = 0
+    #                             ind_2 = int(inst.split("_")[-3])
+    #                             ind_3 = int(inst.split("_")[-2])
+    #                             ind_4 = int(inst.split("_")[-1])
+    #                             indices = [ind_1, ind_2, ind_3, ind_4]
+
+    #                     for intersection_num, ind in enumerate(indices):
+
+    #                         # ind = 0 - 1 
+    #                         # intersection_num = 0 - 1 
+    #                         last_step = (inst_ind == len(chain_instructions)-1)
+    #                         # last_step = True
+                            
+    #                         lhs, rel, rhs = chains[ind]
+                            
+    #                         # this "if" only happens for the first part of the chain ([user, likes, ?])
+    #                         if lhs is not None:
+    #                             if user_belief is not None:
+    #                                 lhs = user_belief
+    #                             lhs = lhs[batch[0]:batch[1]]
+    #                             lhs = lhs.view(-1, 1,
+    #                                            embedding_size).repeat(1, nb_branches, 1)
+
+    #                             lhs = lhs.view(-1, embedding_size)
+    #                             # lhs becomes [1, emb_size]
+    #                             rel = rel[batch[0]:batch[1]]
+    #                             rel = rel.view(-1, 1,
+    #                                        embedding_size).repeat(1, nb_branches, 1)
+    #                             rel = rel.view(-1, embedding_size)
+    #                             # rel becomes [1, emb_size]
+
+    #                             if intersection_num > 0 and 'disj' in env.graph_type:
+    #                                 raise NotImplementedError
+
+    #                             if f"rhs_{ind}" not in candidate_cache or last_step:
+    #                                 # z_scores is the scores of all entities to be the 
+    #                                 # rhs and rhs_3d is their embeddings ([1,no_entity, emb_size])
+    #                                 z_scores, rhs_3d = self.get_best_candidates(
+    #                                 rel, lhs, None, candidates, last_step, None)
+    #                                 z_scores_1d = z_scores.view(-1)
+
+    #                                 if 'disj' in env.graph_type or scores_normalize:
+    #                                     z_scores_1d = torch.sigmoid(z_scores_1d)
+
+    #                                 if not last_step:
+    #                                     nb_sources = rhs_3d.shape[0] * \
+    #                                         rhs_3d.shape[1]
+    #                                     nb_branches = nb_sources // batch_size
+    #                                 else:
+    #                                     if ind == indices[0]:
+    #                                         nb_ent = rhs_3d.shape[1]
+    #                                     else:
+    #                                         nb_ent = 1
+ 
+    #                                     # first time the batch scores is None and the z_scores we make it equal to z_scores_1d
+    #                                     batch_scores = z_scores_1d if batch_scores is None else objective(
+    #                                         z_scores_1d, batch_scores.view(-1, 1).repeat(1, nb_ent).view(-1), t_norm)
+    #                                     nb_ent = rhs_3d.shape[1]
+
+    #                                 candidate_cache[f"rhs_{ind}"] = (batch_scores, rhs_3d)
+
+    #                                 if ind == indices[0] and 'disj' in env.graph_type:
+    #                                     raise NotImplementedError
+
+    #                                 #if ind == indices[-1]:
+    #                                 #    candidate_cache[f"lhs_{ind+1}"] = (batch_scores, rhs_3d)
+    #                             else:
+    #                                 raise NotImplementedError
+    #                             del lhs, rel, rhs, rhs_3d, z_scores_1d, z_scores
+                                    
+    #                         # this is for the second part of the chain ([item, rel, tail])
+    #                         elif ind>0:
+    #                             rhs = rhs[batch[0]:batch[1]]
+    #                             rhs = rhs.view(-1, 1,
+    #                                            embedding_size).repeat(1, nb_branches, 1)
+    #                             rhs = rhs.view(-1, embedding_size)
+    #                             rel = rel[batch[0]:batch[1]]
+    #                             rel = rel.view(-1, 1,
+    #                                        embedding_size).repeat(1, nb_branches, 1)
+    #                             rel = rel.view(-1, embedding_size)
+
+    #                             if intersection_num > 0 and 'disj' in env.graph_type:
+    #                                 raise NotImplementedError
+    #                             if f"lhs_{ind}" not in candidate_cache or last_step:
+    #                                 z_scores, lhs_3d = self.get_best_candidates(
+    #                                     rel, rhs, None, candidates, last_step, None, 'rhs')
+    #                                 z_scores_1d = z_scores.view(-1)
+
+    #                                 if 'disj' in env.graph_type or scores_normalize:
+    #                                     z_scores_1d = torch.sigmoid(z_scores_1d)
+    #                                 # TODO: check this
+    #                                 if not last_step:
+    #                                     nb_sources = lhs_3d.shape[0] * \
+    #                                         lhs_3d.shape[1]
+    #                                     nb_branches = nb_sources // batch_size
+    #                                 if not last_step:
+    #                                     batch_scores = z_scores_1d if batch_scores is None else objective(
+    #                                         z_scores_1d, batch_scores.view(-1, 1).repeat(1, candidates).view(-1), t_norm)
+    #                                 else:
+
+    #                                     if ind == indices[0]:
+    #                                         nb_ent = lhs_3d.shape[1]
+    #                                     else:
+    #                                         nb_ent = 1
+                                        
+    #                                     batch_scores = z_scores_1d if batch_scores is None else objective(
+    #                                         z_scores_1d, batch_scores.view(-1, 1).repeat(1, nb_ent).view(-1), t_norm)
+    #                                     nb_ent = lhs_3d.shape[1]
+    #                                 candidate_cache[f"lhs_{ind}"] = (batch_scores, lhs_3d)
+
+    #                             else:
+    #                                 raise NotImplementedError
+    #                             del lhs, rel, rhs, lhs_3d, z_scores_1d, z_scores
+                                
+    #         if batch_scores is not None:
+
+    #             scores_2d = batch_scores.view(batch_size, -1, nb_ent)
+    #             res, _ = torch.max(scores_2d, dim=1)
+    #             scores = res if scores is None else torch.cat([scores, res])
+    #             del batch_scores, scores_2d, res, candidate_cache
+
+    #         else:
+    #             assert False, "Batch Scores are empty: an error went uncaught."
+    #         res = scores
+
+    #     return res
     def query_answering_BF_Exist(self, env: DynKBCSingleton, candidates: int = 5, t_norm: str = 'min', 
     batch_size=1, scores_normalize=0, explain=False, user_belief=None):
 
         res = None
+        # for disjunction, we need to use the t-conorm
         if 'disj' in env.graph_type:
             objective = self.t_conorm
-        else: 
+        else:
             objective = self.t_norm
+
         chains, chain_instructions = env.chains, env.chain_instructions
-        nb_queries, embedding_size = chains[0][0].shape[0], chains[0][0].shape[1]
+        # chain_instructions = ['hop_0_1']
+        # chains = [part1, part2]
+        # part1 = [lhs_1, rels_1, rhs_1]
+        # len(lhs_2) = 8000
+
+
+        # in our lists, the order is from target to anchor, but this code assumes the opposite, so we reverse chains
+        chains = chains[::-1]
+        # for now, we're neglecting the 'user' part of the chain evidence
+        chains = chains[:-1]
+
+        nb_queries, embedding_size = chains[0][2].shape[0], chains[0][2].shape[1]
+
         scores = None
+
+        # data_loader = DataLoader(dataset=chains, batch_size=16, shuffle=False)
+
         batches = make_batches(nb_queries, batch_size)
-        # batches = [(0, 1), (1, 2), ...)]
+        # batches = [(0,1), (1,2), (2,3), ...]
+
         for i, batch in enumerate(tqdm.tqdm(batches)):
             nb_branches = 1
             nb_ent = 0
             batch_scores = None
             candidate_cache = {}
+
             batch_size = batch[1] - batch[0]
+            # here, batch_size is 1
+            # torch.cuda.empty_cache()
             dnf_flag = False
             if 'disj' in env.graph_type:
                 dnf_flag = True
 
-
             for inst_ind, inst in enumerate(chain_instructions):
-
-                # inst = "hop_0_1"
-                # inst_ind = 0
                 with torch.no_grad():
-                    # in fact our projection is like an intersection for the cqd (item has a fact and is 
-                    # liked by the user)
-                    if 'hop' in inst or 'inter' in inst:
+                    # this if for the case of projection
+                    if 'hop' in inst:
+                        if len(inst.split("_")) == 2:
+                            ind_1 = int(inst.split("_")[-1])
+                            indices = [ind_1]
 
+                            #  ATTENTION! this is last hop only for the case of neglecting the user
+                            last_hop = True
+                        else:
+
+                            ind_1 = int(inst.split("_")[-2])
+                            ind_2 = int(inst.split("_")[-1])
+
+                            indices = [ind_1, ind_2]
+                            last_hop = False
+                        # indices = [0, 1]
+                        # each index is one hop
+
+                        if objective == self.t_conorm and dnf_flag:
+                            objective = self.t_norm
+
+                        
+                        for hop_num, ind in enumerate(indices):
+                            
+                            # here!
+                            # print("HOP")
+                            # print(candidate_cache.keys())
+                            last_step = (inst_ind == len(
+                                chain_instructions)-1) and last_hop
+
+
+                            lhs, rel, rhs = chains[ind]
+
+                            # [a, p, X], [X, p, Y][Y, p, Z]
+
+                            # takes one of the lhs, rel (their embeddings)
+                            if lhs is not None:
+                                lhs = lhs[batch[0]:batch[1]]
+
+                            else:
+                                # print("MTA BRAT")
+                                batch_scores, lhs_3d = candidate_cache[f"lhs_{ind}"]
+                                lhs = lhs_3d.view(-1, embedding_size)
+                            rel = rel[batch[0]:batch[1]]
+                            rel = rel.view(-1, 1,
+                                           embedding_size).repeat(1, nb_branches, 1)
+                            rel = rel.view(-1, embedding_size)
+                            if f"rhs_{ind}" not in candidate_cache:
+                                # gets best candidates for the rhs of this hop and the scores
+                                z_scores, rhs_3d = self.get_best_candidates(
+                                    rel, lhs, None, candidates, last_step, env if explain else None)
+                                # z_scores : tensor of shape [Num_queries * Candidates^K]
+                                # rhs_3d : tensor of shape [Num_queries, Candidates^K, Embedding_size]
+
+                                # [Num_queries * Candidates^K]
+                                z_scores_1d = z_scores.view(-1)
+                                if 'disj' in env.graph_type or scores_normalize:
+                                    z_scores_1d = torch.sigmoid(z_scores_1d)
+
+                                # B * S
+                                nb_sources = rhs_3d.shape[0]*rhs_3d.shape[1]
+                                nb_branches = nb_sources // batch_size
+                                # if the batch_score is None, we initialize it with the candidates scores (since there's just one hop). otherwise, the t-norm is applied
+                                if not last_step:
+                                    batch_scores = z_scores_1d if batch_scores is None else objective(
+                                        z_scores_1d, batch_scores.view(-1, 1).repeat(1, candidates).view(-1), t_norm)
+                                else:
+                                    nb_ent = rhs_3d.shape[1]
+                                    batch_scores = z_scores_1d if batch_scores is None else objective(
+                                        z_scores_1d, batch_scores.view(-1, 1).repeat(1, nb_ent).view(-1), t_norm)
+                                # candidate_cache stores the scores and the candidate embeddings for each rhs
+                                candidate_cache[f"rhs_{ind}"] = (
+                                    batch_scores, rhs_3d)
+                                if not last_hop:
+                                    # candidate_cache of the rhs of this hop is the lhs of the next hop
+                                    candidate_cache[f"lhs_{indices[hop_num+1]}"] = (
+                                        batch_scores, rhs_3d)
+
+                            else:
+                                # if we already have the rhs of this hop, we are in the last hop (so no more lhs)
+                                batch_scores, rhs_3d = candidate_cache[f"rhs_{ind}"]
+                                candidate_cache[f"lhs_{ind+1}"] = (
+                                    batch_scores, rhs_3d)
+                                last_hop = True
+                                del lhs, rel
+                                # #torch.cuda.empty_cache() 
+                                continue
+
+                            last_hop = True
+                            del lhs, rel, rhs, rhs_3d, z_scores_1d, z_scores
+                            # #torch.cuda.empty_cache()
+
+                    elif 'inter' in inst:
                         ind_1 = int(inst.split("_")[-2])
                         ind_2 = int(inst.split("_")[-1])
-                        # indices = [0,1]
+
                         indices = [ind_1, ind_2]
 
                         if objective == self.t_norm and dnf_flag:
                             objective = self.t_conorm
-                        if 'inter' in inst:
 
-                            if len(inst.split("_")) == 4:
-                                ind_1 = 0
-                                ind_2 = int(inst.split("_")[-2])
-                                ind_3 = int(inst.split("_")[-1])
-                                indices = [ind_1, ind_2, ind_3]
-                            elif len(inst.split("_")) == 5:
-                                ind_1 = 0
-                                ind_2 = int(inst.split("_")[-3])
-                                ind_3 = int(inst.split("_")[-2])
-                                ind_4 = int(inst.split("_")[-1])
-                                indices = [ind_1, ind_2, ind_3, ind_4]
+                        if len(inst.split("_")) > 3:
+                            ind_1 = int(inst.split("_")[-3])
+                            ind_2 = int(inst.split("_")[-2])
+                            ind_3 = int(inst.split("_")[-1])
+
+                            indices = [ind_1, ind_2, ind_3]
 
                         for intersection_num, ind in enumerate(indices):
+                            # print("intersection")
+                            # print(candidate_cache.keys())
 
-                            # ind = 0 - 1 
-                            # intersection_num = 0 - 1 
+                            # and ind == indices[0]
                             last_step = (inst_ind == len(chain_instructions)-1)
-                            # last_step = True
-                            
+
                             lhs, rel, rhs = chains[ind]
-                            
-                            # this "if" only happens for the first part of the chain ([user, likes, ?])
+
                             if lhs is not None:
-                                if user_belief is not None:
-                                    lhs = user_belief
                                 lhs = lhs[batch[0]:batch[1]]
                                 lhs = lhs.view(-1, 1,
                                                embedding_size).repeat(1, nb_branches, 1)
-
                                 lhs = lhs.view(-1, embedding_size)
-                                # lhs becomes [1, emb_size]
-                                rel = rel[batch[0]:batch[1]]
-                                rel = rel.view(-1, 1,
+
+                            else:
+                                batch_scores, lhs_3d = candidate_cache[f"lhs_{ind}"]
+                                lhs = lhs_3d.view(-1, embedding_size)
+                                nb_sources = lhs_3d.shape[0]*lhs_3d.shape[1]
+                                nb_branches = nb_sources // batch_size
+
+                            rel = rel[batch[0]:batch[1]]
+                            rel = rel.view(-1, 1,
                                            embedding_size).repeat(1, nb_branches, 1)
-                                rel = rel.view(-1, embedding_size)
-                                # rel becomes [1, emb_size]
+                            rel = rel.view(-1, embedding_size)
 
-                                if intersection_num > 0 and 'disj' in env.graph_type:
-                                    raise NotImplementedError
+                            if intersection_num > 0 and 'disj' in env.graph_type:
+                                batch_scores, rhs_3d = candidate_cache[f"rhs_{ind}"]
+                                rhs = rhs_3d.view(-1, embedding_size)
+                                z_scores = self.score_fixed(
+                                    rel, lhs, rhs, candidates)
 
-                                if f"rhs_{ind}" not in candidate_cache or last_step:
-                                    # z_scores is the scores of all entities to be the 
-                                    # rhs and rhs_3d is their embeddings ([1,no_entity, emb_size])
-                                    z_scores, rhs_3d = self.get_best_candidates(
-                                    rel, lhs, None, candidates, last_step, None)
-                                    z_scores_1d = z_scores.view(-1)
+                                z_scores_1d = z_scores.view(-1)
+                                if 'disj' in env.graph_type or scores_normalize:
+                                    z_scores_1d = torch.sigmoid(z_scores_1d)
 
-                                    if 'disj' in env.graph_type or scores_normalize:
-                                        z_scores_1d = torch.sigmoid(z_scores_1d)
+                                batch_scores = z_scores_1d if batch_scores is None else objective(
+                                    z_scores_1d, batch_scores, t_norm)
 
-                                    if not last_step:
-                                        nb_sources = rhs_3d.shape[0] * \
-                                            rhs_3d.shape[1]
-                                        nb_branches = nb_sources // batch_size
-                                    else:
-                                        if ind == indices[0]:
-                                            nb_ent = rhs_3d.shape[1]
-                                        else:
-                                            nb_ent = 1
- 
-                                        # first time the batch scores is None and the z_scores we make it equal to z_scores_1d
-                                        batch_scores = z_scores_1d if batch_scores is None else objective(
-                                            z_scores_1d, batch_scores.view(-1, 1).repeat(1, nb_ent).view(-1), t_norm)
+                                continue
+
+                            if f"rhs_{ind}" not in candidate_cache or last_step:
+                                z_scores, rhs_3d = self.get_best_candidates(
+                                    rel, lhs, None, candidates, last_step, env if explain else None)
+
+                                # [B * Candidates^K] or [B, S-1, N]
+                                z_scores_1d = z_scores.view(-1)
+                                # print(z_scores_1d)
+                                if 'disj' in env.graph_type or scores_normalize:
+                                    z_scores_1d = torch.sigmoid(z_scores_1d)
+
+                                if not last_step:
+                                    nb_sources = rhs_3d.shape[0] * \
+                                        rhs_3d.shape[1]
+                                    nb_branches = nb_sources // batch_size
+
+                                if not last_step:
+                                    batch_scores = z_scores_1d if batch_scores is None else objective(
+                                        z_scores_1d, batch_scores.view(-1, 1).repeat(1, candidates).view(-1), t_norm)
+                                else:
+                                    if ind == indices[0]:
                                         nb_ent = rhs_3d.shape[1]
-
-                                    candidate_cache[f"rhs_{ind}"] = (batch_scores, rhs_3d)
-
-                                    if ind == indices[0] and 'disj' in env.graph_type:
-                                        raise NotImplementedError
-
-                                    #if ind == indices[-1]:
-                                    #    candidate_cache[f"lhs_{ind+1}"] = (batch_scores, rhs_3d)
-                                else:
-                                    raise NotImplementedError
-                                del lhs, rel, rhs, rhs_3d, z_scores_1d, z_scores
-                                    
-                            # this is for the second part of the chain ([item, rel, tail])
-                            elif ind>0:
-                                rhs = rhs[batch[0]:batch[1]]
-                                rhs = rhs.view(-1, 1,
-                                               embedding_size).repeat(1, nb_branches, 1)
-                                rhs = rhs.view(-1, embedding_size)
-                                rel = rel[batch[0]:batch[1]]
-                                rel = rel.view(-1, 1,
-                                           embedding_size).repeat(1, nb_branches, 1)
-                                rel = rel.view(-1, embedding_size)
-
-                                if intersection_num > 0 and 'disj' in env.graph_type:
-                                    raise NotImplementedError
-                                if f"lhs_{ind}" not in candidate_cache or last_step:
-                                    z_scores, lhs_3d = self.get_best_candidates(
-                                        rel, rhs, None, candidates, last_step, None, 'rhs')
-                                    z_scores_1d = z_scores.view(-1)
-
-                                    if 'disj' in env.graph_type or scores_normalize:
-                                        z_scores_1d = torch.sigmoid(z_scores_1d)
-                                    # TODO: check this
-                                    if not last_step:
-                                        nb_sources = lhs_3d.shape[0] * \
-                                            lhs_3d.shape[1]
-                                        nb_branches = nb_sources // batch_size
-                                    if not last_step:
-                                        batch_scores = z_scores_1d if batch_scores is None else objective(
-                                            z_scores_1d, batch_scores.view(-1, 1).repeat(1, candidates).view(-1), t_norm)
                                     else:
+                                        nb_ent = 1
 
-                                        if ind == indices[0]:
-                                            nb_ent = lhs_3d.shape[1]
-                                        else:
-                                            nb_ent = 1
-                                        
-                                        batch_scores = z_scores_1d if batch_scores is None else objective(
-                                            z_scores_1d, batch_scores.view(-1, 1).repeat(1, nb_ent).view(-1), t_norm)
-                                        nb_ent = lhs_3d.shape[1]
-                                    candidate_cache[f"lhs_{ind}"] = (batch_scores, lhs_3d)
+                                    batch_scores = z_scores_1d if batch_scores is None else objective(
+                                        z_scores_1d, batch_scores.view(-1, 1).repeat(1, nb_ent).view(-1), t_norm)
+                                    nb_ent = rhs_3d.shape[1]
 
-                                else:
-                                    raise NotImplementedError
-                                del lhs, rel, rhs, lhs_3d, z_scores_1d, z_scores
-                                
+                                candidate_cache[f"rhs_{ind}"] = (
+                                    batch_scores, rhs_3d)
+
+                                if ind == indices[0] and 'disj' in env.graph_type:
+                                    count = len(indices)-1
+                                    iterator = 1
+                                    while count > 0:
+                                        candidate_cache[f"rhs_{indices[intersection_num+iterator]}"] = (
+                                            batch_scores, rhs_3d)
+                                        iterator += 1
+                                        count -= 1
+
+                                if ind == indices[-1]:
+                                    candidate_cache[f"lhs_{ind+1}"] = (
+                                        batch_scores, rhs_3d)
+                            else:
+                                batch_scores, rhs_3d = candidate_cache[f"rhs_{ind}"]
+                                candidate_cache[f"rhs_{ind+1}"] = (
+                                    batch_scores, rhs_3d)
+
+                                last_hop = True
+                                del lhs, rel
+                                continue
+
+                            del lhs, rel, rhs, rhs_3d, z_scores_1d, z_scores
+
             if batch_scores is not None:
+                # [B * entites * S ]
+                # S ==  K**(V-1)
 
                 scores_2d = batch_scores.view(batch_size, -1, nb_ent)
+                # print(scores_2d.shape)
+                # [1,candidates, nb_ent]
+                # res is the max score for each entity among the candidates
                 res, _ = torch.max(scores_2d, dim=1)
                 scores = res if scores is None else torch.cat([scores, res])
+
                 del batch_scores, scores_2d, res, candidate_cache
 
             else:
                 assert False, "Batch Scores are empty: an error went uncaught."
             res = scores
 
+        # res has the score of each entity for each query
         return res
 
 
@@ -2055,7 +2323,7 @@ class KBCModel(nn.Module, ABC):
                                     batch_scores, rhs_3d)
                                 last_hop = True
                                 del lhs, rel
-                                # #torch.cuda.empty_cache()
+                                # #torch.cuda.empty_cache() 
                                 continue
 
                             last_hop = True

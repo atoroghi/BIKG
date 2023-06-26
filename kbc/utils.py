@@ -28,25 +28,36 @@ def create_instructions_bpl(chains,graph_type):
     try:
 
             if graph_type == '1_2':
-                instructions.append("hop_0_1")
+                #instructions.append("hop_0_1")
+                instructions.append("hop_0")
 
             elif graph_type == '2_2':
-                instructions.append("intersect_0_1_2")
-            elif graph_type == '2_3':
-                instructions.append("intersect_0_1_2_3")
-            elif graph_type == '1_3':
-                instructions.append("hop_0_1")
-                instructions.append("hop_1_2")
-            elif graph_type == '1_4':
-                instructions.append("hop_0_1")
-                instructions.append("hop_1_2")
-                instructions.append("hop_2_3")
-            elif graph_type == '3_3':
-                instructions.append("hop_0_1")
-                instructions.append("intersect_1_2_3")
-            elif graph_type == '4_3':
+                #instructions.append("intersect_0_1_2")
                 instructions.append("intersect_0_1")
-                instructions.append("intersect_2_3")
+            elif graph_type == '2_3':
+                #instructions.append("intersect_0_1_2_3")
+                instructions.append("intersect_0_1_2")
+            elif graph_type == '1_3':
+                #instructions.append("hop_0_1")
+                #instructions.append("hop_1_2")
+                instructions.append("hop_0_1")
+            elif graph_type == '1_4':
+                #instructions.append("hop_0_1")
+                #instructions.append("hop_1_2")
+                #instructions.append("hop_2_3")
+                instructions.append("hop_0_1")
+                instructions.append("hop_1_2")
+            elif graph_type == '3_3':
+                #instructions.append("hop_0_1")
+                #instructions.append("intersect_1_2_3")
+                instructions.append("hop_0_1")
+                instructions.append("intersect_1_2")
+            elif graph_type == '4_3':
+                #instructions.append("intersect_0_1")
+                #instructions.append("intersect_2_3")
+                instructions.append("intersect_0_1")
+                instructions.append("hop_1_2")
+
             else:
                 raise NotImplementedError
 
