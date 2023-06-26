@@ -1118,6 +1118,11 @@ def preload_env(kbc_path, dataset, graph_type, mode="complete", kg_path=None,
             part2 = [x['raw_chain'][1] for x in type3_3chain]
             part3 = [x['raw_chain'][2] for x in type3_3chain]
             part4 = [x['raw_chain'][3] for x in type3_3chain]
+            intact_part1 = part1.copy()
+            intact_part2 = part2.copy()
+            intact_part3 = part3.copy()
+            intact_part4 = part4.copy()
+            intact_parts = [intact_part1, intact_part2, intact_part3, intact_part4]
 
             flattened_part1 =[]
             flattened_part2 = []
@@ -1145,7 +1150,7 @@ def preload_env(kbc_path, dataset, graph_type, mode="complete", kg_path=None,
             user_ids, item_ids, keys = get_keys_and_targets_bpl([part1, part2, part3, part4], users, items, graph_type)
 
             if not chain_instructions:
-                chain_instructions = create_instructions_bpl([part1[0], part2[0], part3[0]])
+                chain_instructions = create_instructions_bpl([part1[0], part2[0], part3[0]], graph_type)
 
             device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 

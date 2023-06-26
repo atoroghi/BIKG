@@ -29,10 +29,10 @@ def run(kbc_path, dataset_hard, dataset_name, t_norm='min', candidates=3,
     experiments.remove(QuerDAG.TYPE2_2.value)
     experiments.remove(QuerDAG.TYPE2_2_disj.value)
     experiments.remove(QuerDAG.TYPE1_3.value)
-    #experiments.remove(QuerDAG.TYPE1_4.value)
+    experiments.remove(QuerDAG.TYPE1_4.value)
     experiments.remove(QuerDAG.TYPE2_3.value)
     experiments.remove(QuerDAG.TYPE3_3.value)
-    experiments.remove(QuerDAG.TYPE4_3.value)
+    #experiments.remove(QuerDAG.TYPE4_3.value)
     experiments.remove(QuerDAG.TYPE4_3_disj.value)
     experiments.remove(QuerDAG.TYPE1_3_joint.value)
 
