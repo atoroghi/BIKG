@@ -22,19 +22,27 @@ from kbc.evaluate_bpl import evaluate_existential
 def run(kbc_path, dataset_hard, dataset_name, t_norm='min', candidates=3,
  scores_normalize=0, kg_path=None, explain=False, user_likes =None,user_likes_train=None, ent_id =None,
   quantifier=None, valid_heads=None, valid_tails=None, non_items_array=None, 
-  cov_anchor=None, cov_var=None, cov_target=None):
+  cov_anchor=None, cov_var=None, cov_target=None, chain_type=None):
+    chain_type_experiments = {'1_1': QuerDAG.TYPE1_1.value, '1_2': QuerDAG.TYPE1_2.value, '1_3': QuerDAG.TYPE1_3.value,
+    '2_2':QuerDAG.TYPE2_2.value, '2_2_disj': QuerDAG.TYPE2_2_disj.value, '1_4': QuerDAG.TYPE1_4.value, '2_3': QuerDAG.TYPE2_3.value
+    , '3_3': QuerDAG.TYPE3_3.value, '4_3': QuerDAG.TYPE4_3.value, '4_3_disj':QuerDAG.TYPE4_3_disj.value, '1_3_joint': QuerDAG.TYPE1_3_joint.value}
     experiments = [t.value for t in QuerDAG]
-    experiments.remove(QuerDAG.TYPE1_1.value)
-    experiments.remove(QuerDAG.TYPE1_2.value)
-    experiments.remove(QuerDAG.TYPE2_2.value)
-    experiments.remove(QuerDAG.TYPE2_2_disj.value)
-    #experiments.remove(QuerDAG.TYPE1_3.value)
-    experiments.remove(QuerDAG.TYPE1_4.value)
-    experiments.remove(QuerDAG.TYPE2_3.value)
-    experiments.remove(QuerDAG.TYPE3_3.value)
-    experiments.remove(QuerDAG.TYPE4_3.value)
-    experiments.remove(QuerDAG.TYPE4_3_disj.value)
-    experiments.remove(QuerDAG.TYPE1_3_joint.value)
+    
+    for key in chain_type_experiments.keys():
+        if key != chain_type:
+            experiments.remove(chain_type_experiments[key])
+    
+    # experiments.remove(QuerDAG.TYPE1_1.value)
+    # experiments.remove(QuerDAG.TYPE1_2.value)
+    # experiments.remove(QuerDAG.TYPE2_2.value)
+    # experiments.remove(QuerDAG.TYPE2_2_disj.value)
+    # #experiments.remove(QuerDAG.TYPE1_3.value)
+    # experiments.remove(QuerDAG.TYPE1_4.value)
+    # experiments.remove(QuerDAG.TYPE2_3.value)
+    # experiments.remove(QuerDAG.TYPE3_3.value)
+    # experiments.remove(QuerDAG.TYPE4_3.value)
+    # experiments.remove(QuerDAG.TYPE4_3_disj.value)
+    # experiments.remove(QuerDAG.TYPE1_3_joint.value)
 
     print(kbc_path, dataset_name, t_norm, candidates)
 
@@ -170,6 +178,7 @@ if __name__ == "__main__":
     parser.add_argument('--cov_anchor', type=float, default=0.1, help='Covariance of the anchor node')
     parser.add_argument('--cov_var', type=float, default=0.1, help='Covariance of the variable node')
     parser.add_argument('--cov_target', type=float, default=0.1, help='Covariance of the target node') 
+    parser.add_argument('--chain_type', type=str, default='1_2', help='Chain type of experiment') 
     args = parser.parse_args()
 
     dataset = osp.basename(args.path)
@@ -205,4 +214,4 @@ if __name__ == "__main__":
         kg_path=args.path, explain=args.explain, user_likes=user_likes, user_likes_train=user_likes_train, ent_id=ent_id,
         quantifier=args.quantifier, valid_heads=valid_heads, valid_tails=valid_tails
         , non_items_array=non_items_array, cov_anchor=args.cov_anchor, cov_var=args.cov_var,
-        cov_target=args.cov_target)
+        cov_target=args.cov_target, chain_type=args.chain_type)

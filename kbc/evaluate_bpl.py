@@ -65,6 +65,11 @@ def evaluate_existential(env, scores, user_likes, non_items_array):
 
     pre_ranks_2d = pre_ranks.reshape((-1, 1))
     ranks = np.concatenate((pre_ranks_2d, ranks), axis=1)
+    # for j, row in enumerate(ranks):
+    #     for i, rank in enumerate(row):
+    #         if rank < 11:
+    #             ranks[j][i:] = rank
+
 
     hits_at_1 = np.mean(ranks <= 1, axis=0)
     hits_at_3 = np.mean(ranks <= 3, axis=0)
