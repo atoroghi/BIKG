@@ -1745,7 +1745,7 @@ class KBCModel(nn.Module, ABC):
                         # J_u_for = J_u_for - rel_1[:emb_dim//2] * (1 / J_m1_inv) * rel_1[:emb_dim//2]
                         # h_u_inv = h_u_inv - rel_1[emb_dim//2:] * (1 / J_m1_for) * h_m1_for
                         # J_u_inv = J_u_inv - rel_1[emb_dim//2:] * (1 / J_m1_for) * rel_1[emb_dim//2:]
-                        h_u_for = h_u_for + h_m_inv; h_u_inv = h_u_inv + h_m_for
+                        h_u_for = h_u_for + h_m1_inv; h_u_inv = h_u_inv + h_m1_for
                         J_u_for = J_u_for + (1/cov_var); J_u_inv = J_u_inv + (1/cov_var)
                         mu_u_for = h_u_for / J_u_for
                         mu_u_inv = h_u_inv / J_u_inv
