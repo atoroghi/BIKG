@@ -20,7 +20,7 @@ from kbc.evaluate_bpl import evaluate_existential
 
 
 def run(kbc_path, dataset_hard, dataset_name, t_norm='min', candidates=3,
- scores_normalize=0, kg_path=None, explain=False, user_likes =None, ent_id =None,
+ scores_normalize=0, kg_path=None, explain=False, user_likes =None,user_likes_train=None, ent_id =None,
   quantifier=None, valid_heads=None, valid_tails=None, non_items_array=None, 
   cov_anchor=None, cov_var=None, cov_target=None):
     experiments = [t.value for t in QuerDAG]
@@ -28,11 +28,11 @@ def run(kbc_path, dataset_hard, dataset_name, t_norm='min', candidates=3,
     experiments.remove(QuerDAG.TYPE1_2.value)
     experiments.remove(QuerDAG.TYPE2_2.value)
     experiments.remove(QuerDAG.TYPE2_2_disj.value)
-    experiments.remove(QuerDAG.TYPE1_3.value)
+    #experiments.remove(QuerDAG.TYPE1_3.value)
     experiments.remove(QuerDAG.TYPE1_4.value)
     experiments.remove(QuerDAG.TYPE2_3.value)
     experiments.remove(QuerDAG.TYPE3_3.value)
-    #experiments.remove(QuerDAG.TYPE4_3.value)
+    experiments.remove(QuerDAG.TYPE4_3.value)
     experiments.remove(QuerDAG.TYPE4_3_disj.value)
     experiments.remove(QuerDAG.TYPE1_3_joint.value)
 
@@ -43,7 +43,7 @@ def run(kbc_path, dataset_hard, dataset_name, t_norm='min', candidates=3,
     rank = path_entries[path_entries.index('rank') + 1] if 'rank' in path_entries else 'None'
 
     for exp in experiments:
-        metrics = answer(kbc_path, dataset_hard, t_norm, exp, candidates, scores_normalize, kg_path, explain, user_likes, ent_id, quantifier=quantifier, valid_heads=valid_heads,
+        metrics = answer(kbc_path, dataset_hard, t_norm, exp, candidates, scores_normalize, kg_path, explain, user_likes, user_likes_train, ent_id, quantifier=quantifier, valid_heads=valid_heads,
          valid_tails=valid_tails, non_items_array=non_items_array, cov_anchor=cov_anchor, cov_var=cov_var, cov_target=cov_target)
 
         with open(f'topk_d={dataset_name}_t={t_norm}_e={exp}_rank={rank}_k={candidates}_sn={scores_normalize}.json', 'w') as fp:
@@ -52,7 +52,7 @@ def run(kbc_path, dataset_hard, dataset_name, t_norm='min', candidates=3,
 
 
 def answer(kbc_path, dataset_hard, t_norm='min', query_type=QuerDAG.TYPE1_2, candidates=3, scores_normalize = 0, kg_path=None, 
-explain=False, user_likes=None, ent_id=None, quantifier=None, valid_heads=None, valid_tails=None, non_items_array=None, cov_anchor=None, cov_var=None, cov_target=None):
+explain=False, user_likes=None,user_likes_train=None, ent_id=None, quantifier=None, valid_heads=None, valid_tails=None, non_items_array=None, cov_anchor=None, cov_var=None, cov_target=None):
     # takes each query chain, creates instruction on what type it is, and replaces each entity with its embedding
     env = preload_env(kbc_path, dataset_hard, query_type, mode='hard', kg_path=kg_path, explain=explain, valid_heads=valid_heads, valid_tails=valid_tails, ent_id=ent_id)
     #env = preload_env(kbc_path, dataset_complete, query_type, mode='complete', explain=explain, valid_heads=valid_heads, valid_tails=valid_tails)
@@ -91,6 +91,12 @@ explain=False, user_likes=None, ent_id=None, quantifier=None, valid_heads=None, 
         print("instantiated: cov_target:", cov_target)
         scores = kbc.model.query_answering_BF_Instantiated(env, candidates, t_norm=t_norm ,
          batch_size=1, scores_normalize = scores_normalize, explain=explain, cov_anchor=cov_anchor, cov_var=cov_var, cov_target=cov_target)
+    elif quantifier == 'fae_test':
+        print("fae: cov_anchor:", cov_anchor)
+        print("fae: cov_var:", cov_var)
+        print("fae: cov_target:", cov_target)
+        scores = kbc.model.query_answering_BF_instantiated_Fae(env, candidates, non_items_array, user_likes_train,
+    cov_anchor=1e-2, cov_var=1e-2, cov_target=1e-2, lam=0.5)
     
     test_ans_hard = env.target_ids_hard
     test_ans = 	env.target_ids_complete
@@ -115,7 +121,7 @@ if __name__ == "__main__":
 
     t_norms = ['min', 'product']
     normalize_choices = ['0', '1']
-    quantifiers = ['existential', 'marginal_i', 'marginal_ui']
+    quantifiers = ['existential', 'marginal_i', 'marginal_ui', 'fae_test']
 
     parser = argparse.ArgumentParser(
     description="Complex Query Decomposition - Beam"
@@ -182,6 +188,8 @@ if __name__ == "__main__":
     valid_tails = pickle.load(open(valid_tails_path, 'rb'))
     user_likes_path = osp.join(args.path, 'user_likes.pickle')
     user_likes = pickle.load(open(user_likes_path, 'rb'))
+    user_likes_train_path = osp.join(args.path, 'user_likes_train.pickle')
+    user_likes_train = pickle.load(open(user_likes_train_path, 'rb'))
     ent_id = pickle.load(open(osp.join(args.path, 'ent_id.pickle'), 'rb'))
     rel_id = pickle.load(open(osp.join(args.path, 'rel_id.pickle'), 'rb'))
     non_items_array = np.load(osp.join(args.path, 'non_items_array.npy'))
@@ -194,7 +202,7 @@ if __name__ == "__main__":
     run(args.model_path, data_hard,
         dataset, t_norm=args.t_norm, candidates=candidates,
         scores_normalize=int(args.scores_normalize),
-        kg_path=args.path, explain=args.explain, user_likes=user_likes, ent_id=ent_id,
+        kg_path=args.path, explain=args.explain, user_likes=user_likes, user_likes_train=user_likes_train, ent_id=ent_id,
         quantifier=args.quantifier, valid_heads=valid_heads, valid_tails=valid_tails
         , non_items_array=non_items_array, cov_anchor=args.cov_anchor, cov_var=args.cov_var,
         cov_target=args.cov_target)

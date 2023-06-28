@@ -753,7 +753,7 @@ def preload_env(kbc_path, dataset, graph_type, mode="complete", kg_path=None,
             part2 = [x['raw_chain'][1] for x in type1_3chain]
             part3 = [x['raw_chain'][2] for x in type1_3chain]
             intact_part1 = part1.copy()
-            intact_part2 = part2.copy()
+            intact_part2 = part2.copy() 
             intact_part3 = part3.copy()
             intact_parts = [intact_part1, intact_part2, intact_part3]
 
@@ -797,7 +797,6 @@ def preload_env(kbc_path, dataset, graph_type, mode="complete", kg_path=None,
             chain1 = kbc.model.get_full_embeddigns(part1)
             chain2 = kbc.model.get_full_embeddigns(part2)
             chain3 = kbc.model.get_full_embeddigns(part3)
-
 
             #lhs_norm = 0.0
             #for lhs_emb in chain1[0]:

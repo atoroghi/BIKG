@@ -24,7 +24,7 @@ def evaluate_existential(env, scores, user_likes, non_items_array):
     # performing pre_critiquing first
     # users_embs is a tensor of size (nb_queries, embedding_size)
     users_embs, likes_embs , _ = chains[0]
-    pre_scores = env.kbc.model.forward_emb(users_embs, likes_embs)
+    pre_scores = env.kbc.model.forward_emb(users_embs, likes_embs[0].unsqueeze(dim=0))
 
 
     non_items = set(non_items_array)

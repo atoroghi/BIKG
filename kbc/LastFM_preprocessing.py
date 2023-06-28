@@ -446,3 +446,27 @@ non_items = np.array(list(all_ents - items))
 # %%
 np.save(os.path.join(path, 'non_items_array.npy'), non_items)
 # %%
+with open(os.path.join(path, 'train.txt.pickle'), 'rb') as f:
+    train = pickle.load(f)
+with open(os.path.join(path, 'valid.txt.pickle'), 'rb') as f:
+    valid = pickle.load(f)
+with open(os.path.join(path, 'test.txt.pickle'), 'rb') as f:
+    test = pickle.load(f)
+
+train_rec = train[train[:, 1] == np.max(train[:, 1])]
+test_rec = test[test[:, 1] == np.max(train[:, 1])]
+valid_rec = valid[valid[:, 1] == np.max(train[:, 1])]
+
+all_rec = np.concatenate((train_rec, test_rec, valid_rec), axis = 0)
+
+user_likes_train = {}
+for line in train_rec:
+    user = line[0]
+    item = line[2]
+    if user not in user_likes_train:
+        user_likes_train[user] = set()
+    user_likes_train[user].add(item)
+# %%
+out_file = open(path + '/user_likes_train.pickle', 'wb')
+pickle.dump(user_likes_train, out_file)
+# %%
