@@ -22,7 +22,7 @@ if __name__ == '__main__':
     #cov_targets = [1e-2, 1e-1,1e1, 1e2]
     experiment_name = '1_2_conditional'
     chain_type = '1_2'
-    #os.mkdir(experiment_name)
+    os.mkdir(experiment_name)
 
 
     for cov_anchor in cov_anchors:
@@ -36,8 +36,8 @@ if __name__ == '__main__':
                 #command = ["python3", "-m", "kbc.cqd_beam_bpl", "data/Movielens_twohop", "--model_path", "models/Movielens_twohop-SimplE-model-rank-20-epoch-50-1687626870.pt", "--dataset", "Movielens_twohop", "--candidates", "3", "--quantifier", "marginal_ui", "--cov_target", str(cov_target), "--cov_var", str(cov_var), "--cov_anchor", str(cov_anchor)]
                 command = ["python3", "-m", "kbc.cqd_beam_bpl", "data/Movielens_twohop", "--model_path", "models/Movielens_twohop-SimplE-model-rank-20-epoch-50-1687626870.pt", "--dataset", "Movielens_twohop", "--candidates", "3", "--quantifier", "marginal_ui", "--cov_target", str(cov_target), "--cov_var", str(cov_var), "--cov_anchor", str(cov_anchor), "--chain_type", str(chain_type)]
                 
-                #with open(os.path.join(experiment_name, output_file), "w") as f:
-                with open(output_file, "w") as f:
+                with open(os.path.join(experiment_name, output_file), "w") as f:
+                #with open(output_file, "w") as f:
                     process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
                     stdout, stderr = process.communicate()
                     f.write(stdout.decode())
