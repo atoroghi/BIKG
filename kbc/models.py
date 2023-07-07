@@ -8,8 +8,9 @@
 from abc import ABC, abstractmethod
 from typing import Tuple, List, Dict, Optional, Callable
 import math
-import sys
+import sys, os
 import logging
+import pickle
 
 import torch
 from torch import nn
@@ -1260,6 +1261,71 @@ class KBCModel(nn.Module, ABC):
 
 
         return scores
+    
+    def query_answering_BF_Sanity(self, env: DynKBCSingleton, candidates: int = 5, t_norm: str = 'min', 
+    batch_size=1, scores_normalize=0, explain='no', cov_anchor=1e-2, cov_var=1e-2, cov_target=1e-2):
+
+        parts = env.parts
+        chains, chain_instructions = env.chains, env.chain_instructions
+        intact_parts = env.intact_parts
+        nb_queries, emb_dim = chains[0][0].shape[0], chains[0][0].shape[1]
+        possible_heads_emb = env.possible_heads_emb; possible_tails_emb = env.possible_tails_emb
+        user_embs = torch.empty((nb_queries, emb_dim), device=Device)  
+        if env.graph_type == '1_2':
+            path = os.path.join(os.getcwd(), 'data', 'Movielens_twohop')
+            with open(os.path.join(path, 'train.txt.pickle'), 'rb') as f:
+                train = pickle.load(f)
+            with open(os.path.join(path, 'test.txt.pickle'), 'rb') as f:
+                test = pickle.load(f)
+            with open(os.path.join(path, 'valid.txt.pickle'), 'rb') as f:
+                valid = pickle.load(f)
+            all_data = np.concatenate((train,test, valid), axis=0)
+            #print(np.where((all_data[:,1]==28) & (all_data[:,2]==17746)))
+            #sys.exit()
+            part1 , part2 = parts[0], parts[1]
+            intact_part1, intact_part2 = intact_parts[0], intact_parts[1]
+
+            chain1, chain2 = chains[0], chains[1]
+
+            lhs_1_emb, rel_1_emb, rhs_1_emb, lhs_2_emb, rel_2_emb, rhs_2_emb = chain1[0], chain1[1], chain1[2], chain2[0], chain2[1], chain2[2]
+            if not 'SimplE' in str(self.model_type):
+                raise NotImplementedError
+            else:
+                gt_ranks = []
+                num_leg_lhss = []
+                top_ten_trues = []
+                for i in tqdm.tqdm(range(nb_queries // 5)):
+
+                    for j in range(5):
+                        # lhs_1 is the user belief. rhs_2 is the evidence embedding
+                        tail_id = intact_part2[i*5+j][2][0]
+                        rel_id = intact_part2[i*5+j][1]
+                        gt_id = intact_part2[i*5+j][0]
+                        leg_lhss = all_data[np.where((all_data[:,2] == tail_id)& (all_data[:,1]==rel_id))][:,0]
+
+                        num_leg_lhs = (np.where((all_data[:,2] == tail_id)& (all_data[:,1]==rel_id)))[0].shape[0]
+                        num_leg_lhss.append(num_leg_lhs)
+                        
+                        lhs_1, rel_1, rhs_1 = lhs_1_emb[i*5+j], rel_1_emb[i*5+j], None
+                        lhs_2, rel_2, rhs_2 = None, rel_2_emb[i*5+j], rhs_2_emb[i*5+j]
+                        gt = torch.tensor((intact_part1[i*5+j][2].astype(np.int32))) 
+                        scores_m = self.backward_emb(rhs_2.unsqueeze(dim=0),rel_2.unsqueeze(dim=0))
+                        gt_rank = (scores_m[0] > scores_m[0][gt]).sum().item() + 1
+                        gt_ranks.append(gt_rank)
+
+                        top_ten_true = 0
+
+                        top_scores, top_indices = torch.topk(scores_m, k=10, dim=1)
+                        for top in top_indices[0]:
+                            if top.item() in leg_lhss:
+                                top_ten_true += 1
+                        top_ten_trues.append(top_ten_true)
+                print("average gt rank: ", np.mean(np.array(gt_ranks)))
+                fraction = np.sum(np.array(gt_ranks) < 10) / len(np.array(gt_ranks))
+                print("fraction of gt rank < 10: ", fraction)
+                print("average legitimate lhs: ", np.mean(np.array(num_leg_lhss)))
+                print("average top ten scored candidates in true lhss: ", np.mean(np.array(top_ten_trues)))
+                sys.exit()
 
 
     def query_answering_BF_Marginal_UI(self, env: DynKBCSingleton, candidates: int = 5, t_norm: str = 'min', 
@@ -1273,9 +1339,13 @@ class KBCModel(nn.Module, ABC):
         chains, chain_instructions = env.chains, env.chain_instructions
         intact_parts = env.intact_parts
         nb_queries, emb_dim = chains[0][0].shape[0], chains[0][0].shape[1]
-        possible_heads_emb = env.possible_heads_emb; possible_tails_emb = env.possible_tails_emb
-        
-        user_embs = torch.empty((nb_queries, emb_dim), device=Device)
+        scores_m = self.backward_emb(rhs_2.unsqueeze(dim=0),rel_2.unsqueeze(dim=0))
+        print(torch.argmax(scores_m))
+        rcount = (scores_m[0] > scores_m[0][gt]).sum().item() + 1
+        print(rcount)
+        z_scores, z_indices = torch.topk(scores_m, k=10, dim=1)
+        print(z_indices)
+        sys.exit()
 
         if env.graph_type == '1_2':
             part1 , part2 = parts[0], parts[1]
@@ -1293,6 +1363,7 @@ class KBCModel(nn.Module, ABC):
                         # lhs_1 is the user belief. rhs_2 is the evidence embedding
                         lhs_1, rel_1, rhs_1 = lhs_1_emb[i*5+j], rel_1_emb[i*5+j], None
                         lhs_2, rel_2, rhs_2 = None, rel_2_emb[i*5+j], rhs_2_emb[i*5+j]
+                        gt = torch.tensor((intact_part1[i*5+j][2].astype(np.int32)))
                         ### sanity check
                         #print("gt:", intact_part1[i*5+j][2].astype(np.int32))
                         #mu_gt = self.entity_embeddings(torch.tensor((intact_part1[i*5+j][2].astype(np.int32))))
@@ -1349,6 +1420,14 @@ class KBCModel(nn.Module, ABC):
                         mu_m_for = h_m_for / J_m_for
                         J_m_inv = (1/cov_anchor) + (1/cov_var)
                         mu_m_inv = h_m_inv / J_m_inv
+
+                        scores_m = self.backward_emb(rhs_2.unsqueeze(dim=0),rel_2.unsqueeze(dim=0))
+                        print(torch.argmax(scores_m))
+                        rcount = (scores_m[0] > scores_m[0][gt]).sum().item() + 1
+                        print(rcount)
+                        z_scores, z_indices = torch.topk(scores_m, k=10, dim=1)
+                        print(z_indices)
+                        sys.exit()
                         ### update the precision and information of the target node given the variable
                         if j == 0:
                            #mu_u = torch.unsqueeze(lhs_1, dim=0)
@@ -1551,6 +1630,7 @@ class KBCModel(nn.Module, ABC):
 
         elif env.graph_type == '2_2':
             part1, part2, part3 = parts[0], parts[1], parts[2]
+            intact_part1, intact_part2, intact_part3 = intact_parts[0], intact_parts[1], intact_parts[2]
             chain1, chain2, chain3 = chains[0], chains[1], chains[2]
             lhs_1_emb, rel_1_emb, rhs_1_emb, lhs_2_emb, rel_2_emb, rhs_2_emb, lhs_3_emb, rel_3_emb, rhs_3_emb = chain1[0], chain1[1], chain1[2], chain2[0], chain2[1], chain2[2], chain3[0], chain3[1], chain3[2]
 
@@ -1563,27 +1643,48 @@ class KBCModel(nn.Module, ABC):
                         lhs_1, rel_1, rhs_1 = lhs_1_emb[i*5+j], rel_1_emb[i*5+j], None
                         lhs_2, rel_2, rhs_2 = None, rel_2_emb[i*5+j], rhs_2_emb[i*5+j]
                         lhs_3, rel_3, rhs_3 = None, rel_3_emb[i*5+j], rhs_3_emb[i*5+j]
-
+                        mu_gt = self.entity_embeddings(torch.tensor((intact_part1[i*5+j][2].astype(np.int32))))
+                        mu_gt_for = mu_gt[:emb_dim//2]
+                        mu_gt_inv = mu_gt[emb_dim//2:]
                         mu_m_for = possible_tails_emb[0][i*5+j, :emb_dim//2]
                         h_m_for = (1/cov_var) * mu_m_for
                         mu_m_inv = possible_tails_emb[0][i*5+j, emb_dim//2:]
                         h_m_inv = (1/cov_var) * mu_m_inv
-
+                        # print("dist between mu_gt and mu_m")
+                        # print(torch.cdist(mu_gt_for.unsqueeze(dim=0), mu_m_for.unsqueeze(dim=0), p=2))
+                        # print(torch.cdist(mu_gt_inv.unsqueeze(dim=0), mu_m_inv.unsqueeze(dim=0), p=2))
+                        
                         mu_d_for1 = rhs_2[:emb_dim//2] * rel_2[emb_dim//2:]
-                        h_d_for1 = (1/cov_anchor) * mu_d_for1
+                        #h_d_for1 = (1/cov_anchor) * mu_d_for1
                         mu_d_inv1 = rhs_2[emb_dim//2:] * rel_2[:emb_dim//2]
-                        h_d_inv1 = (1/cov_anchor) * mu_d_inv1
+                        #h_d_inv1 = (1/cov_anchor) * mu_d_inv1
                         mu_d_for2 = rhs_3[:emb_dim//2] * rel_3[emb_dim//2:]
-                        h_d_for2 = (1/cov_anchor) * mu_d_for2
+                        #h_d_for2 = (1/cov_anchor) * mu_d_for2
                         mu_d_inv2 = rhs_3[emb_dim//2:] * rel_3[:emb_dim//2]
-                        h_d_inv2 = (1/cov_anchor) * mu_d_inv2
+                        #h_d_inv2 = (1/cov_anchor) * mu_d_inv2
+                        mu_d_for = mu_d_for1 + mu_d_for2
+                        mu_d_inv = mu_d_inv1 + mu_d_inv2
+                        h_d_for = (1/cov_anchor) * mu_d_for
+                        h_d_inv = (1/cov_anchor) * mu_d_inv
+                        # print("dist between mu_d and mu_m")
+                        # print(torch.cdist(mu_m_for.unsqueeze(dim=0), mu_d_inv.unsqueeze(dim=0), p=2))
+                        # print(torch.cdist(mu_m_inv.unsqueeze(dim=0), mu_d_for.unsqueeze(dim=0), p=2))
+                        
 
-                        h_m_for = h_m_for + h_d_inv1 + h_d_inv2
+                        h_m_for = h_m_for + h_d_inv
                         J_m_for = (1/cov_var) + (1/cov_anchor) + (1/cov_anchor)
-                        h_m_inv = h_m_inv + h_d_for1 + h_d_for2
+                        h_m_inv = h_m_inv + h_d_for
                         J_m_inv = (1/cov_var) + (1/cov_anchor) + (1/cov_anchor)
                         mu_m_for = h_m_for / J_m_for
                         mu_m_inv = h_m_inv / J_m_inv
+                        # print("dist between mu_d and mu_m after update")
+                        # print(torch.dist(mu_m_for.unsqueeze(dim=0), mu_d_inv.unsqueeze(dim=0), p=2))
+                        # print(torch.dist(mu_m_inv.unsqueeze(dim=0), mu_d_for.unsqueeze(dim=0), p=2))
+
+                        # print("dist between mu_gt and mu_m after update")
+                        # print(torch.dist(mu_gt_for.unsqueeze(dim=0), mu_m_for.unsqueeze(dim=0), p=2))
+                        # print(torch.dist(mu_gt_inv.unsqueeze(dim=0), mu_m_inv.unsqueeze(dim=0), p=2))
+                        # sys.exit()
 
                         # update user belief
                         if j==0:
@@ -1595,15 +1696,17 @@ class KBCModel(nn.Module, ABC):
                             J_u_for = (1/cov_target)
                             J_u_inv = (1/cov_target)
 
-                        h_u_for = h_u_for - rel_1[:emb_dim//2] * (1 / J_m_inv) * h_m_inv
-                        J_u_for = J_u_for - rel_1[:emb_dim//2] * (1 / J_m_inv) * rel_1[:emb_dim//2]
-                        h_u_inv = h_u_inv - rel_1[emb_dim//2:] * (1 / J_m_for) * h_m_for
-                        J_u_inv = J_u_inv - rel_1[emb_dim//2:] * (1 / J_m_for) * rel_1[emb_dim//2:]
+                        # h_u_for = h_u_for - rel_1[:emb_dim//2] * (1 / J_m_inv) * h_m_inv
+                        # J_u_for = J_u_for - rel_1[:emb_dim//2] * (1 / J_m_inv) * rel_1[:emb_dim//2]
+                        # h_u_inv = h_u_inv - rel_1[emb_dim//2:] * (1 / J_m_for) * h_m_for
+                        # J_u_inv = J_u_inv - rel_1[emb_dim//2:] * (1 / J_m_for) * rel_1[emb_dim//2:]
 
                         # h_u_for = h_u_for + h_m_inv; h_u_inv = h_u_inv + h_m_for
                         # J_u_for = J_u_for + (1/cov_var); J_u_inv = J_u_inv + (1/cov_var)
-                        mu_u_for = h_u_for / J_u_for
-                        mu_u_inv = h_u_inv / J_u_inv
+                        # mu_u_for = h_u_for / J_u_for
+                        # mu_u_inv = h_u_inv / J_u_inv
+
+
 
                         user_embs[i*5+j, :emb_dim//2] = mu_u_for
                         user_embs[i*5+j, emb_dim//2:] = mu_u_inv

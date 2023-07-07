@@ -59,7 +59,7 @@ def add_inverse(rec, kg):
 #dataset = 'Movielens (no_rev)'
 #dataset = 'LastFM'
 #dataset = 'AmazonBook'
-dataset = 'Movielens_twohop'
+dataset = 'Movielens_twohop_nouser'
 from pathlib import Path
 import pickle
 
@@ -214,11 +214,17 @@ kg_test, kg_val = train_test_split(kg_testval, test_size=0.5)
 
 # %%
 
+# %%
+train = kg_train
+valid = kg_val
+test = kg_test
+
+# %%
 # at this point, train, valid and test are not all in order entities (we have to compensate later)
 train = np.concatenate((rec_train, kg_train), axis = 0)
 valid = np.concatenate((kg_val, rec_valid), axis = 0)
 test = np.concatenate((rec_test, kg_test), axis = 0)
-
+# %%
 # delete rows of users in the test set that are not in the train set
 test = test[np.isin(test[:, 0], train[:, 0])]
 
