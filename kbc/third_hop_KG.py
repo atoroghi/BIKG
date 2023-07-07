@@ -7,7 +7,7 @@ import pickle
 from pathlib import Path
 import io
 #%%
-dataset = 'Movielens_twohop'
+dataset = 'Movielens_twohop_new'
 
 path = os.path.join(os.getcwd(),'..' , 'data', dataset)
 #path = os.path.join(os.getcwd() , 'data', dataset)
@@ -40,7 +40,7 @@ with open(second_hop_path) as f:
         second_tail_rdfs.add(ent_id2rdf[tail])
 # %%
 # load r_map.dat and make a dictionary of rel_rdf to rel_id (same as code)
-r_map_path = os.path.join(root, 'kg/r_map.dat')
+r_map_path = os.path.join(root, 'kg/r_map_twohop.dat')
 rel_rdf2id = {}
 with open(r_map_path) as f:
     for line in f:
@@ -95,9 +95,7 @@ for line in io.TextIOWrapper(f, encoding='utf-8'):
     line = line.strip()
     if not "<http://rdf.freebase.com/ns/" in line or "XMLSchema#" in line:
         continue
-    if 'type' in line or 'syntax' in line or 'schema' in line:
-        continue
-    if 'webpage' in line or 'description' in line:
+    if "XML" in line or "url" in line or "wikipedia" in line or "time" in line or "label" in line or "_id" in line or "description" in line or "alias" in line or "webpage" in line or "key" in line or "api" in line or "name" in line or "type" in line or "date" in line or "rime" in line or "rating" in line or "track" in line or "trailer" in line or "notable" in line or "value" in line or "topic" in line or "website" in line or "compos" in line:
         continue
 
     line2 = line.split("\t")
@@ -152,9 +150,9 @@ for line in f:
         existing_rels[r_name] = r_id
 f.close()
 # %%
-#for new_rel in selected_rels:
-#    if new_rel not in existing_rels:
-#        existing_rels[new_rel] = str(len(existing_rels))  
+for new_rel in selected_rels:
+    if new_rel not in existing_rels:
+        existing_rels[new_rel] = str(len(existing_rels))  
 # %%
 f2 = open(os.path.join(root, 'kg', 'third_hop_kg_filtered.dat'), 'w')
 f1 = open(os.path.join(root, 'kg', 'third_hop_kg.dat'), 'r')
@@ -162,12 +160,12 @@ i1 = 0 ; i2 = 0
 for line in f1:
     try:
         h, r, t = line.strip().split("\t")
-        # no new rels allowed
-        #if r in existing_rels:
-        if r.isdigit():
+        # no new rels allowed (next line should be commented for this case)
+        if r in existing_rels:
+        #if r.isdigit():
 
-            #f2.write(str(h) + "\t" + str(existing_rels[r]) + "\t" + str(t) + "\n")
-            f2.write(str(h) + "\t" + str(r) + "\t" + str(t) + "\n")
+            f2.write(str(h) + "\t" + str(existing_rels[r]) + "\t" + str(t) + "\n")
+            #f2.write(str(h) + "\t" + str(r) + "\t" + str(t) + "\n")
             i2 += 1
         i1 += 1
         if i1 % 1000000 == 0:
@@ -204,13 +202,13 @@ for line in f:
         h_id = len(ent_rdf2id)
         ent_rdf2id[h] = h_id
         f2.write("\n" + str(h_id)+"\t" + str(h))
-    # not allowing new relations
-    #if r in existing_rels.keys():
-    #    r_id = existing_rels[r]
-    r_id = r
+    # not allowing new relations (next line should be commented for this case and also the elif)
+    if r in existing_rels.keys():
+        r_id = existing_rels[r]
+    #r_id = r
 
-    #elif r in existing_rels.values():
-    #    r_id = r
+    elif r in existing_rels.values():
+        r_id = r
 
     if t.isdigit():
         t_id = t
@@ -225,17 +223,24 @@ f.close(); f1.close(); f2.close(); f5.close()
 
 # %%
 # instead of updating the r_map, I decided to keep the number of relations fixed and just remove new triples
-# existing_rels = {}
-# f = open(os.path.join(root, 'kg', 'r_map.dat'), 'r')
-# for line in f:
-#     r_id, r_rdf = line.strip().split("\t")
-#     start_index = r_rdf.rfind("/") + 1
-#     end_index = r_rdf.rfind(">")
-#     r_name = r_rdf[start_index:end_index]
-#     if r_name not in existing_rels:
-#         existing_rels[r_name] = r_id
-# f.close()
+#existing_rels = {}
+#f = open(os.path.join(root, 'kg', 'r_map.dat'), 'r')
+#for line in f:
+#    r_id, r_rdf = line.strip().split("\t")
+#    start_index = r_rdf.rfind("/") + 1
+#    end_index = r_rdf.rfind(">")
+#    r_name = r_rdf[start_index:end_index]
+#    if r_name not in existing_rels:
+#        existing_rels[r_name] = r_id
+#f.close()
 # %%
+# update the r_map file
+f = open(os.path.join(root, 'kg', 'r_map_threehop.dat'), 'w')
+for r in existing_rels.keys():
+    f.write(str(existing_rels[r]) + "\t" + "<http://rdf.freebase.com/ns/"+ r +">" + "\n")
+
+f.close()
+#%%
 # filter out rare entities from two and three hop kgs and form the last version of the kg
 secondhop = os.path.join(root, 'kg', 'train_secondhop.dat')
 a2 = np.genfromtxt(secondhop, delimiter='\t', dtype=np.int32)

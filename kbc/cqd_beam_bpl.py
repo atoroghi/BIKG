@@ -196,12 +196,7 @@ if __name__ == "__main__":
     #sys.exit()
 
     data_hard = pickle.load(open(data_hard_path, 'rb'))
-    #print((data_hard.type1_2chain[0].data))
-    ind2rel = pickle.load(open(osp.join(args.path, f'ind2rel.pkl'), 'rb'))
-    print((((ind2rel.values()))))
-    train = pickle.load(open(osp.join(args.path, f'kbc_data/train.txt.pickle'), 'rb'))
-    print(np.unique(train[:,1]).shape)
-    sys.exit()
+
     #data_complete = pickle.load(open(data_complete_path, 'rb'))
     valid_heads_path = osp.join(args.path, 'kbc_data','valid_heads.pickle')
     valid_heads = pickle.load(open(valid_heads_path, 'rb'))

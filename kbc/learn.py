@@ -201,8 +201,8 @@ def dataset_to_query(model, dataset_name, dataset_mode):
 if __name__ == "__main__":
 
 	modes = ['train', 'load']
-	big_datasets = ['FB15K', 'WN', 'WN18RR', 'FB237', 'YAGO3-10', "Bio", 'Movielens']
-	datasets = big_datasets
+	#big_datasets = ['FB15K', 'WN', 'WN18RR', 'FB237', 'YAGO3-10', "Bio", 'Movielens']
+	#datasets = big_datasets
 
 
 

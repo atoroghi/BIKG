@@ -1268,7 +1268,7 @@ class KBCModel(nn.Module, ABC):
         parts = env.parts
         chains, chain_instructions = env.chains, env.chain_instructions
         intact_parts = env.intact_parts
-        nb_queries, emb_dim = chains[0][0].shape[0], chains[0][0].shape[1]
+        nb_queries, emb_dim = chains[1][2].shape[0], chains[1][2].shape[1]
         possible_heads_emb = env.possible_heads_emb; possible_tails_emb = env.possible_tails_emb
         user_embs = torch.empty((nb_queries, emb_dim), device=Device)  
         if env.graph_type == '1_2':
@@ -1288,6 +1288,7 @@ class KBCModel(nn.Module, ABC):
             chain1, chain2 = chains[0], chains[1]
 
             lhs_1_emb, rel_1_emb, rhs_1_emb, lhs_2_emb, rel_2_emb, rhs_2_emb = chain1[0], chain1[1], chain1[2], chain2[0], chain2[1], chain2[2]
+
             if not 'SimplE' in str(self.model_type):
                 raise NotImplementedError
             else:
@@ -1306,7 +1307,7 @@ class KBCModel(nn.Module, ABC):
                         num_leg_lhs = (np.where((all_data[:,2] == tail_id)& (all_data[:,1]==rel_id)))[0].shape[0]
                         num_leg_lhss.append(num_leg_lhs)
                         
-                        lhs_1, rel_1, rhs_1 = lhs_1_emb[i*5+j], rel_1_emb[i*5+j], None
+                        #lhs_1, rel_1, rhs_1 = lhs_1_emb[i*5+j], rel_1_emb[i*5+j], None
                         lhs_2, rel_2, rhs_2 = None, rel_2_emb[i*5+j], rhs_2_emb[i*5+j]
                         gt = torch.tensor((intact_part1[i*5+j][2].astype(np.int32))) 
                         scores_m = self.backward_emb(rhs_2.unsqueeze(dim=0),rel_2.unsqueeze(dim=0))
