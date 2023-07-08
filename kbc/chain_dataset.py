@@ -15,6 +15,16 @@ class Chain():
         self.data = {'raw_chain':[], 'anchors': [], 'optimisable': [], 'type':None}
 
 class ChaineDataset():
+    def set_attr(self, type1_1chain=None, type1_2chain=None, type2_2chain=None, type2_2chain_u=None, type1_3chain=None, type2_3chain=None, type3_3chain=None, type4_3chain=None, type4_3chain_u=None):
+        self.type1_1chain = type1_1chain
+        self.type1_2chain = type1_2chain
+        self.type2_2chain = type2_2chain
+        self.type2_2chain_u = type2_2chain_u
+        self.type1_3chain = type1_3chain
+        self.type2_3chain = type2_3chain
+        self.type3_3chain = type3_3chain
+        self.type4_3chain = type4_3chain
+        self.type4_3chain_u = type4_3chain_u
     def __init__(self, dataset: Dataset, threshold:int=1e6):
 
 
