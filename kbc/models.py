@@ -2447,8 +2447,155 @@ class KBCModel(nn.Module, ABC):
         # res has the score of each entity for each query
         return res
 
+    def query_answering_Bayesian1(self, env: DynKBCSingleton, candidates: int = 5, t_norm: str = 'min', batch_size=1, scores_normalize=0, explain=False,
+    cov_anchor=None, cov_var=None, cov_target=None):
+        
+        if env.graph_type == '1_2_seq':
+            last_step = False
 
-      
+            chains = env.chains
+            chain1 , chain2, chain3, chain4 = chains
+            seq_chains = [chain1, chain2, chain3]
+            nb_queries, embedding_size = chains[0][0].shape[0], chains[0][0].shape[1]
+            # one dimension for each seq. each seq has no_queries * entities dims
+            scores = torch.empty((3, nb_queries, self.sizes[0])).to(chains[0][0].device)
+
+            for i in tqdm.tqdm(range(nb_queries)):                
+                for seq in range(3):
+                    if seq==0:
+                        target_emb = torch.zeros((1, embedding_size)).to(chains[0][0].device)
+                    # chain is (anchor_emb, rel1_emb, None) in all cases
+                    chain = seq_chains[seq]
+                    lhs, rel, rhs = chain
+                    lhs = lhs[i].view(-1, embedding_size)
+                    rel = rel[i].view(-1, embedding_size)
+                    # z_scores is the scores of top candidates and rhs_3d is the embeddings of top candidates
+                    z_scores, rhs_3d = self.get_best_candidates(
+                        rel, lhs, None, candidates, last_step, None)
+                    # this is the mean of most likely variable candidates used as evidence
+                    rhs_2d_mean = torch.mean(rhs_3d[0], dim=0).view(1, embedding_size)
+                    rel_2 = (chain4[1][i]).view(1, embedding_size)
+                    evidence_mean = rhs_2d_mean * rel_2
+                    target_emb = (1 /(cov_anchor + candidates * cov_target)) * ((cov_anchor)*target_emb + (candidates * cov_target)*evidence_mean)
+                    cov_target = (cov_target * cov_anchor) /(cov_anchor + candidates * cov_target)
+                    rel_virtual = torch.ones_like(target_emb)
+                    ent_scores = self.forward_emb(target_emb, rel_virtual)
+                    scores[seq][i] = ent_scores.view(-1)
+        
+        elif env.graph_type == '1_3_seq':
+            raise NotImplementedError
+            # chains = env.chains
+            # env.chain_instructions = ['hop_0_1']
+            # # (all embeddings) chain1, chain2, and chain3 are the 3 anchors related to the var and chain4 is the first hop
+            # chain1 , chain2, chain3, chain4, chain5 = chains
+            # seq_chains = [chain1, chain2, chain3]
+            
+            # for seq in range(3):
+            #     new_chain = [seq_chains[seq], chain4]
+            #     env.chains = new_chain
+            #     print((env.chains[0][0].shape))
+            #     sys.exit()
+
+
+
+
+            print(chain1[0].shape)
+            #print((env.chains[0]))
+            sys.exit()
+        return scores
+
+
+    def query_answering_Bayesian2(self, env: DynKBCSingleton, candidates: int = 5, t_norm: str = 'min', batch_size=1, scores_normalize=0, explain=False,
+    cov_anchor=None, cov_var=None, cov_target=None): 
+        if env.graph_type == '1_2_seq':
+            last_step = False
+            chains = env.chains
+            chain1 , chain2, chain3, chain4 = chains
+            seq_chains = [chain1, chain2, chain3]
+            nb_queries, embedding_size = chains[0][0].shape[0], chains[0][0].shape[1]
+            # one dimension for each seq. each seq has no_queries * entities dims
+            scores = torch.empty((3, nb_queries, self.sizes[0])).to(chains[0][0].device)
+            for i in tqdm.tqdm(range(nb_queries)): 
+                for seq in range(3):
+                    if seq==0:
+                        target_emb = torch.zeros((1, embedding_size)).to(chains[0][0].device)
+                    # remember that each chain is a tuple of lhs, rel, rhs embeddings for all queries
+                    chain = seq_chains[seq]
+                    new_chain = [(chain[0][i].view(1,-1), chain[1][i].view(1,-1), chain[2]), (chain4[0], chain4[1][i].view(1,-1), chain4[2])]
+                    env.chains = new_chain
+                    env.chain_instructions = ['hop_0_1']
+                    scores_query = self.query_answering_BF(env, candidates, t_norm, batch_size, scores_normalize, explain)
+                    _, top_answer_indices = torch.topk(scores_query, candidates, dim=1)
+                    top_answer_embeddings = self.entity_embeddings(top_answer_indices[0])
+                    evidence_mean = torch.mean(top_answer_embeddings, dim=0).view(1, embedding_size)
+                    target_emb = (1 /(cov_anchor + candidates * cov_target)) * ((cov_anchor)*target_emb + (candidates * cov_target)*evidence_mean)
+                    cov_target = (cov_target * cov_anchor) /(cov_anchor + candidates * cov_target)
+                    rel_virtual = torch.ones_like(target_emb)
+                    ent_scores = self.forward_emb(target_emb, rel_virtual)
+                    scores[seq][i] = ent_scores.view(-1)
+
+        elif env.graph_type == '1_3_seq':
+            raise NotImplementedError
+
+
+        return scores    
+    def query_answering_Bayesian3(self, env: DynKBCSingleton, candidates: int = 5, t_norm: str = 'min', batch_size=1, scores_normalize=0, explain=False,
+    cov_anchor=None, cov_var=None, cov_target=None):
+            if env.graph_type == '1_2_seq':
+                last_step = False
+                chains = env.chains
+                chain1 , chain2, chain3, chain4 = chains
+                seq_chains = [chain1, chain2, chain3]
+                nb_queries, embedding_size = chains[0][0].shape[0], chains[0][0].shape[1]
+                # one dimension for each seq. each seq has no_queries * entities dims
+                scores = torch.empty((3, nb_queries, self.sizes[0])).to(chains[0][0].device)
+                for i in tqdm.tqdm(range(nb_queries)): 
+                    for seq in range(3):
+                        if seq==0:
+                            target_emb = torch.zeros((1, embedding_size)).to(chains[0][0].device)
+                            var_emb = torch.zeros((1, embedding_size)).to(chains[0][0].device)
+                        # remember that each chain is a tuple of lhs, rel, rhs embeddings for all queries
+                        chain = seq_chains[seq]
+                        evidence_emb = (chain[0][i] * chain[1][i]).view(1,-1)
+                        var_emb = (1 /(cov_anchor +  cov_var)) * ((cov_anchor)*var_emb + (cov_var)*evidence_emb)
+                        cov_var = (cov_var * cov_anchor) /(cov_anchor + cov_var)
+                        target_emb = (1 /(cov_var + cov_target)) * ((cov_var)*target_emb + (cov_target)*var_emb)
+                        cov_target = (cov_target * cov_var) /(cov_anchor + cov_var)
+                        rel_virtual = torch.ones_like(target_emb)
+                        ent_scores = self.forward_emb(target_emb, rel_virtual)
+                        scores[seq][i] = ent_scores.view(-1)
+
+            return scores
+    def query_answering_Bayesian4(self, env: DynKBCSingleton, candidates: int = 5, t_norm: str = 'min', batch_size=1, scores_normalize=0, explain=False,
+    cov_anchor=None, cov_var=None, cov_target=None):
+            if env.graph_type == '1_2_seq':
+                    last_step = False
+                    chains = env.chains
+                    chain1 , chain2, chain3, chain4 = chains
+                    seq_chains = [chain1, chain2, chain3]
+                    nb_queries, embedding_size = chains[0][0].shape[0], chains[0][0].shape[1]
+                    # one dimension for each seq. each seq has no_queries * entities dims
+                    scores = torch.empty((3, nb_queries, self.sizes[0])).to(chains[0][0].device)
+                    for i in tqdm.tqdm(range(nb_queries)): 
+                        for seq in range(3):
+                            if seq==0:
+                                target_emb = torch.zeros((1, embedding_size)).to(chains[0][0].device)
+                                var_emb = torch.zeros((1, embedding_size)).to(chains[0][0].device)
+                                J_target, J_var, J_anchor = (1/cov_target), (1/cov_var), (1/cov_anchor)
+                                h_target, h_var = torch.zeros((1, embedding_size)).to(chains[0][0].device), torch.zeros((1, embedding_size)).to(chains[0][0].device)
+                                
+                            chain = seq_chains[seq]
+                            evidence_emb = (chain[0][i] * chain[1][i]).view(1,-1)
+                            h_anchor = (1/cov_anchor) * evidence_emb
+                            h_var = h_anchor + h_var
+                            J_var = J_var + J_anchor
+                            h_target = h_target + chain4[1][i] * (1/J_var) * h_var
+                            J_target = J_target + J_var
+                            target_emb = (1/J_target) * h_target
+                            rel_virtual = torch.ones_like(target_emb)
+                            ent_scores = self.forward_emb(target_emb, rel_virtual)
+                            scores[seq][i] = ent_scores.view(-1)
+            return scores
 
     def query_answering_BF(self, env: DynKBCSingleton, candidates: int = 5, t_norm: str = 'min', batch_size=1, scores_normalize=0, explain=False):
 
@@ -2466,7 +2613,6 @@ class KBCModel(nn.Module, ABC):
         # len(lhs_2) = 8000
 
         nb_queries, embedding_size = chains[0][0].shape[0], chains[0][0].shape[1]
-
         scores = None
 
         # data_loader = DataLoader(dataset=chains, batch_size=16, shuffle=False)
