@@ -2452,6 +2452,7 @@ class KBCModel(nn.Module, ABC):
         
         if env.graph_type == '1_2_seq':
             last_step = False
+            gt_targets = env.target_ids_hard
 
             chains = env.chains
             chain1 , chain2, chain3, chain4 = chains
@@ -2460,7 +2461,8 @@ class KBCModel(nn.Module, ABC):
             # one dimension for each seq. each seq has no_queries * entities dims
             scores = torch.empty((3, nb_queries, self.sizes[0])).to(chains[0][0].device)
 
-            for i in tqdm.tqdm(range(nb_queries)):                
+            for i in tqdm.tqdm(range(nb_queries)):
+                gts = list(gt_targets.values())[i]               
                 for seq in range(3):
                     if seq==0:
                         target_emb = torch.zeros((1, embedding_size)).to(chains[0][0].device)
@@ -2481,6 +2483,12 @@ class KBCModel(nn.Module, ABC):
                     rel_virtual = torch.ones_like(target_emb)
                     ent_scores = self.forward_emb(target_emb, rel_virtual)
                     scores[seq][i] = ent_scores.view(-1)
+                    #gt_ranks = []
+                    #for gt in gts:
+                    #    rank_gt = (ent_scores[0] > ent_scores[0][gt]).sum().item() + 1
+                    #    gt_ranks.append(rank_gt)
+                    #print(np.mean(gt_ranks))
+                #sys.exit()
         
         elif env.graph_type == '1_3_seq':
             raise NotImplementedError
@@ -2607,6 +2615,7 @@ class KBCModel(nn.Module, ABC):
             objective = self.t_norm
 
         chains, chain_instructions = env.chains, env.chain_instructions
+
         # chain_instructions = ['hop_0_1']
         # chains = [part1, part2]
         # part1 = [lhs_1, rels_1, rhs_1]
@@ -2632,7 +2641,6 @@ class KBCModel(nn.Module, ABC):
             dnf_flag = False
             if 'disj' in env.graph_type:
                 dnf_flag = True
-
             for inst_ind, inst in enumerate(chain_instructions):
                 with torch.no_grad():
                     # this if for the case of projection
@@ -2843,6 +2851,8 @@ class KBCModel(nn.Module, ABC):
 
             else:
                 assert False, "Batch Scores are empty: an error went uncaught."
+            print('scores_found')
+            sys.exit()
             res = scores
 
         # res has the score of each entity for each query

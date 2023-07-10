@@ -53,7 +53,8 @@ def answer(kbc_path, dataset_hard, dataset_complete, t_norm='min', query_type=Qu
            valid_heads=None, valid_tails=None,cov_anchor=None, cov_var=None, cov_target=None):
     # takes each query chain, creates instruction on what type it is, and replaces each entity with its embedding
     env = preload_env(kbc_path, dataset_hard, query_type, mode='hard', kg_path=kg_path, explain=explain, valid_heads=valid_heads, valid_tails=valid_tails)
-    #env = preload_env(kbc_path, dataset_complete, query_type, mode='complete', explain=explain, valid_heads=valid_heads, valid_tails=valid_tails)
+    #env = preload_env(kbc_path, dataset_complete, query_type, mode='complete', kg_path=kg_path,explain=explain, valid_heads=valid_heads, valid_tails=valid_tails)
+
     if len(env.parts) == 2:
         part1, part2 = env.parts
     elif len(env.parts) == 3:
@@ -62,6 +63,7 @@ def answer(kbc_path, dataset_hard, dataset_complete, t_norm='min', query_type=Qu
         part1, part2, part3, part4 = env.parts
     elif len(env.parts) == 5:
         part1, part2, part3, part4, part5 = env.parts
+    test_ans_hard = env.target_ids_hard
     # tells us how many parts there are in each query
     # if '1' in env.chain_instructions[-1][-1]:
     #     part1, part2 = env.parts
@@ -82,8 +84,6 @@ def answer(kbc_path, dataset_hard, dataset_complete, t_norm='min', query_type=Qu
     elif reasoning_mode == 'bayesian4':
         scores = kbc.model.query_answering_Bayesian4(env, candidates, t_norm=t_norm , batch_size=1, scores_normalize = scores_normalize, explain=explain,
         cov_anchor=cov_anchor, cov_var=cov_var, cov_target=cov_target)
-    print(scores.shape)
-    sys.exit()
 
     queries = env.keys_hard
     test_ans_hard = env.target_ids_hard
@@ -92,6 +92,7 @@ def answer(kbc_path, dataset_hard, dataset_complete, t_norm='min', query_type=Qu
     #
     metrics = evaluation(scores, queries, test_ans, test_ans_hard)
     print(metrics)
+    sys.exit()
 
     return metrics
 
@@ -170,6 +171,7 @@ if __name__ == "__main__":
 
     if args.seq == 'yes':
         data_hard_path = osp.join(args.path, f'{dataset}_{mode}_hard_seq.pkl')
+        data_complete_path = osp.join(args.path, f'{dataset}_{mode}_complete_seq.pkl')
     data_hard = pickle.load(open(data_hard_path, 'rb'))
     data_complete = pickle.load(open(data_complete_path, 'rb'))
     valid_heads_path = osp.join(args.path, 'kbc_data','valid_heads.pickle')

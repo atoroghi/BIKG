@@ -1,3 +1,5 @@
+#%%
+#%%
 import torch
 import numpy as np
 import os.path as osp
@@ -29,10 +31,13 @@ if __name__ == "__main__":
     parser.add_argument(
     '--mode', default='test'
     )
+    parser.add_argument(
+    '--hardness', default='hard'
+    )
     args = parser.parse_args()
     dataset = osp.basename(args.path)
     mode = args.mode
-
+    hardness = args.hardness
     data_hard_path = osp.join(args.path, f'{dataset}_{mode}_hard.pkl')
     data_hard = pickle.load(open(data_hard_path, 'rb'))
 
@@ -43,9 +48,10 @@ if __name__ == "__main__":
     all_data = np.concatenate((train, test, valid), axis=0)
     extended_chain = ChaineDataset(Dataset(osp.join('data',args.dataset,'kbc_data')),1000)
     #extended_chain..set_attr(type1_2chain=chain1_2)
-    #chain_types = ['1_2', '1_3']
-    chain_types = ['2_2']
-    data_name = str(args.dataset) + '_'+ mode +'_' +'hard_seq'
+    chain_types = ['1_2', '1_3']
+    #chain_types = ['1_2']
+    #data_name = str(args.dataset) + '_'+ mode +'_' +'hard_seq'
+    data_name = str(args.dataset) + '_'+ mode +'_' +f'{hardness}_seq'
 
     for chain_type in chain_types:
         if chain_type == '2_2':
@@ -93,7 +99,10 @@ if __name__ == "__main__":
                 targets1, targets2, targets3= set(), set(), set()
                 targets_this1, targets_this2 = set(), set()
                 for i, anch in enumerate(modified_anchors1):
-                    possible_targets = set(to_skip['rhs'][(anch, rel1)])
+                    if hardness == 'complete':
+                        possible_targets = set(to_skip['rhs'][(anch, rel1)])
+                    elif hardness == 'hard':
+                        possible_targets = set(test[np.where((test[:,0]==anch) & (test[:,1]==rel1))][:,2])
                     if i == 0:
                         targets_this1 = possible_targets
                     else:
@@ -127,9 +136,11 @@ if __name__ == "__main__":
                 # get the raw chain first
                 raw_chain = chain.data['raw_chain']
                 # split to two parts
+
                 chain1, chain2 = raw_chain[0], raw_chain[1]
                 _, rel2, targets = chain2 
-                # chain1 comes from the test set. targets are rhss for variables that are included in the test set
+                # in data_complete, each of the chains can come from all_data (targets are all possible entities)
+                # in data_hard, chain2 comes from the test set only and doesn't cover every target in test set
                 anchor, rel1, _ = chain1
                 if rel1 % 2 == 0:
                     rel1_inv = rel1 + 1
@@ -186,7 +197,10 @@ if __name__ == "__main__":
                         for possible_var_backward in possible_vars_backward:
                             if (possible_var_backward, rel2) not in to_skip['rhs']:
                                 continue
-                            targets_this = targets_this.union(set(to_skip['rhs'][(possible_var_backward, rel2)]))
+                            if hardness == 'complete':
+                                targets_this = targets_this.union(set(to_skip['rhs'][(possible_var_backward, rel2)]))
+                            elif hardness == 'hard':
+                                targets_this = targets_this.union(set(test[np.where((test[:,0]==possible_var_backward)&(test[:,1]==rel2))][:,2]))
                         if i==0:
                             targets1 = targets_this
                         elif i==1:
@@ -303,7 +317,10 @@ if __name__ == "__main__":
                             for possible_var_backward_2 in possible_vars_backward_2:
                                 if (possible_var_backward_2, rel3) not in to_skip['rhs']:
                                     continue
-                                targets_this = targets_this.union(set(to_skip['rhs'][(possible_var_backward_2, rel3)]))
+                                if hardness == 'complete':
+                                    targets_this = targets_this.union(set(to_skip['rhs'][(possible_var_backward_2, rel3)]))
+                                elif hardness == 'hard':
+                                    targets_this = targets_this.union(set(test[np.where((test[:,0]==possible_var_backward_2)&(test[:,1]==rel3))][:,2]))
                         if i==0:
                             targets1 = targets_this
                         elif i==1:
@@ -338,7 +355,6 @@ if __name__ == "__main__":
                 #sys.exit()
         print(f"{enough} chains had enough anchors:")
         print(f"{not_enough} chains did not have enough anchors:")
-        sys.exit()
 
     save_chain_data(args.path,data_name,extended_chain)
     #sys.exit()
