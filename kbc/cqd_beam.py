@@ -13,8 +13,8 @@ from kbc.utils import preload_env
 from kbc.metrics import evaluation
 
 
-def run(kbc_path, dataset_hard, dataset_complete, dataset_name, t_norm='min', candidates=3, scores_normalize=0, kg_path=None, explain=False, chain_type='1_2', reasoning_mode=None,
-    valid_heads = None, valid_tails=None, cov_anchor=None, cov_var=None,cov_target=None):
+def run(kbc_path, dataset_hard, dataset_complete, dataset_name, t_norm='min', candidates=3, scores_normalize=0, kg_path=None, explain=False, chain_type='1_2', reasoning_mode=None, seq = 'No',
+    valid_heads = None, valid_tails=None, cov_anchor=None, cov_var=None,cov_target=None, ):
 
     chain_type_experiments = {'1_1': QuerDAG.TYPE1_1.value, '1_2': QuerDAG.TYPE1_2.value, '1_3': QuerDAG.TYPE1_3.value,
     '2_2':QuerDAG.TYPE2_2.value, '2_2_disj': QuerDAG.TYPE2_2_disj.value, '1_4': QuerDAG.TYPE1_4.value, '2_3': QuerDAG.TYPE2_3.value
@@ -42,18 +42,18 @@ def run(kbc_path, dataset_hard, dataset_complete, dataset_name, t_norm='min', ca
     rank = path_entries[path_entries.index('rank') + 1] if 'rank' in path_entries else 'None'
 
     for exp in experiments:
-        metrics = answer(kbc_path, dataset_hard, dataset_complete, t_norm, exp, candidates, scores_normalize, kg_path, explain, reasoning_mode, valid_heads, valid_tails, cov_anchor, cov_var, cov_target)
+        metrics = answer(kbc_path, dataset_hard, dataset_complete, t_norm, exp, candidates, scores_normalize, kg_path, explain, reasoning_mode, seq, valid_heads, valid_tails, cov_anchor, cov_var, cov_target)
 
         with open(f'topk_d={dataset_name}_t={t_norm}_e={exp}_rank={rank}_k={candidates}_sn={scores_normalize}.json', 'w') as fp:
             json.dump(metrics, fp)
     return
 
 
-def answer(kbc_path, dataset_hard, dataset_complete, t_norm='min', query_type=QuerDAG.TYPE1_2, candidates=3, scores_normalize = 0, kg_path=None, explain=False, reasoning_mode='cqd',
+def answer(kbc_path, dataset_hard, dataset_complete, t_norm='min', query_type=QuerDAG.TYPE1_2, candidates=3, scores_normalize = 0, kg_path=None, explain=False, reasoning_mode='cqd', seq = 'No',
            valid_heads=None, valid_tails=None,cov_anchor=None, cov_var=None, cov_target=None):
     # takes each query chain, creates instruction on what type it is, and replaces each entity with its embedding
     env = preload_env(kbc_path, dataset_hard, query_type, mode='hard', kg_path=kg_path, explain=explain, valid_heads=valid_heads, valid_tails=valid_tails)
-    #env = preload_env(kbc_path, dataset_complete, query_type, mode='complete', kg_path=kg_path,explain=explain, valid_heads=valid_heads, valid_tails=valid_tails)
+    env = preload_env(kbc_path, dataset_complete, query_type, mode='complete', kg_path=kg_path,explain=explain, valid_heads=valid_heads, valid_tails=valid_tails)
 
     if len(env.parts) == 2:
         part1, part2 = env.parts
@@ -90,7 +90,7 @@ def answer(kbc_path, dataset_hard, dataset_complete, t_norm='min', query_type=Qu
     test_ans = 	env.target_ids_complete
     # scores = torch.randint(1,1000, (len(queries),kbc.model.sizes[0]),dtype = torch.float).cuda()
     #
-    metrics = evaluation(scores, queries, test_ans, test_ans_hard)
+    metrics = evaluation(scores, queries, test_ans, test_ans_hard, seq)
     print(metrics)
     sys.exit()
 
@@ -183,5 +183,5 @@ if __name__ == "__main__":
     run(args.model_path, data_hard, data_complete,
         dataset, t_norm=args.t_norm, candidates=candidates,
         scores_normalize=int(args.scores_normalize),
-        kg_path=args.path, explain=args.explain, chain_type=args.chain_type, reasoning_mode=args.reasoning_mode, 
+        kg_path=args.path, explain=args.explain, chain_type=args.chain_type, reasoning_mode=args.reasoning_mode, seq=args.seq,
         valid_heads=valid_heads, valid_tails=valid_tails, cov_anchor=args.cov_anchor, cov_var=args.cov_var, cov_target=args.cov_target)

@@ -11,7 +11,7 @@ import math
 import sys, os
 import logging
 import pickle
-
+import copy
 import torch
 from torch import nn
 from torch import optim
@@ -1284,6 +1284,8 @@ class KBCModel(nn.Module, ABC):
             #sys.exit()
             part1 , part2 = parts[0], parts[1]
             intact_part1, intact_part2 = intact_parts[0], intact_parts[1]
+            print(intact_part1)
+            sys.exit()
 
             chain1, chain2 = chains[0], chains[1]
 
@@ -2478,38 +2480,51 @@ class KBCModel(nn.Module, ABC):
                     rhs_2d_mean = torch.mean(rhs_3d[0], dim=0).view(1, embedding_size)
                     rel_2 = (chain4[1][i]).view(1, embedding_size)
                     evidence_mean = rhs_2d_mean * rel_2
+
                     target_emb = (1 /(cov_anchor + candidates * cov_target)) * ((cov_anchor)*target_emb + (candidates * cov_target)*evidence_mean)
+                    #print(torch.argmax(rhs_2d_mean))
                     cov_target = (cov_target * cov_anchor) /(cov_anchor + candidates * cov_target)
                     rel_virtual = torch.ones_like(target_emb)
                     ent_scores = self.forward_emb(target_emb, rel_virtual)
                     scores[seq][i] = ent_scores.view(-1)
+
                     #gt_ranks = []
                     #for gt in gts:
                     #    rank_gt = (ent_scores[0] > ent_scores[0][gt]).sum().item() + 1
                     #    gt_ranks.append(rank_gt)
                     #print(np.mean(gt_ranks))
-                #sys.exit()
+
         
         elif env.graph_type == '1_3_seq':
-            raise NotImplementedError
-            # chains = env.chains
-            # env.chain_instructions = ['hop_0_1']
+            gt_targets = env.target_ids_hard
+            chains = env.chains
+            new_env = copy.deepcopy(env)
+            new_env.chain_instructions = ['hop_0_1']
             # # (all embeddings) chain1, chain2, and chain3 are the 3 anchors related to the var and chain4 is the first hop
-            # chain1 , chain2, chain3, chain4, chain5 = chains
-            # seq_chains = [chain1, chain2, chain3]
+            chain1 , chain2, chain3, chain4, chain5 = chains
+            seq_chains = [chain1, chain2, chain3]
+            nb_queries, embedding_size = chains[0][0].shape[0], chains[0][0].shape[1]
+            # one dimension for each seq. each seq has no_queries * entities dims
+            scores = torch.empty((3, nb_queries, self.sizes[0])).to(chains[0][0].device)
             
-            # for seq in range(3):
-            #     new_chain = [seq_chains[seq], chain4]
-            #     env.chains = new_chain
-            #     print((env.chains[0][0].shape))
-            #     sys.exit()
+            for i in tqdm.tqdm(range(nb_queries)):
+                gts = list(gt_targets.values())[i]  
+                for seq in range(3):
+                    if seq==0:
+                        target_emb = torch.zeros((1, embedding_size)).to(chains[0][0].device)
+                    chain1 = seq_chains[seq]
+                    new_env.chains = [(chain1[0][i].view(1,-1),chain1[1][i].view(1,-1),chain1[2]), (chain4[0], chain4[1][i].view(1,-1), chain4[2])]
+                    scores_var = self.query_answering_BF(new_env, candidates=candidates, t_norm=t_norm, batch_size=batch_size, scores_normalize=scores_normalize, explain=explain)
+                    _, top_var_indices = torch.topk(scores_var, candidates, dim=1)
+                    top_var_embeddings = self.entity_embeddings(top_var_indices[0])
+                    evidence_mean = torch.mean(top_var_embeddings, dim=0).view(1, embedding_size)
+                    target_emb = (1 /(cov_anchor + candidates * cov_target)) * ((cov_anchor)*target_emb + (candidates * cov_target)*evidence_mean)
+                    cov_target = (cov_target * cov_anchor) /(cov_anchor + candidates * cov_target)
+                    rel_virtual = torch.ones_like(target_emb)
+                    ent_scores = self.forward_emb(target_emb, rel_virtual)
+                    scores[seq][i] = ent_scores.view(-1)
 
 
-
-
-            print(chain1[0].shape)
-            #print((env.chains[0]))
-            sys.exit()
         return scores
 
 
@@ -2543,7 +2558,31 @@ class KBCModel(nn.Module, ABC):
                     scores[seq][i] = ent_scores.view(-1)
 
         elif env.graph_type == '1_3_seq':
-            raise NotImplementedError
+            last_step = False
+            chains = env.chains
+            chain1 , chain2, chain3, chain4, chain5 = chains
+            seq_chains = [chain1, chain2, chain3]
+            nb_queries, embedding_size = chains[0][0].shape[0], chains[0][0].shape[1]
+            # one dimension for each seq. each seq has no_queries * entities dims
+            scores = torch.empty((3, nb_queries, self.sizes[0])).to(chains[0][0].device)
+            for i in tqdm.tqdm(range(nb_queries)):
+                for seq in range(3):
+                    if seq==0:
+                        target_emb = torch.zeros((1, embedding_size)).to(chains[0][0].device)
+                    # remember that each chain is a tuple of lhs, rel, rhs embeddings for all queries
+                    chain = seq_chains[seq]
+                    new_chain = [(chain[0][i].view(1,-1), chain[1][i].view(1,-1), chain[2]), (chain4[0], chain4[1][i].view(1,-1), chain4[2]), (chain5[0], chain5[1][i].view(1,-1), chain5[2])]
+                    env.chains = new_chain
+                    env.chain_instructions = ['hop_0_1', 'hop_1_2']
+                    scores_query = self.query_answering_BF(env, candidates, t_norm, batch_size, scores_normalize, explain)
+                    _, top_answer_indices = torch.topk(scores_query, candidates, dim=1)
+                    top_answer_embeddings = self.entity_embeddings(top_answer_indices[0])
+                    evidence_mean = torch.mean(top_answer_embeddings, dim=0).view(1, embedding_size)
+                    target_emb = (1 /(cov_anchor + candidates * cov_target)) * ((cov_anchor)*target_emb + (candidates * cov_target)*evidence_mean)
+                    cov_target = (cov_target * cov_anchor) /(cov_anchor + candidates * cov_target)
+                    rel_virtual = torch.ones_like(target_emb)
+                    ent_scores = self.forward_emb(target_emb, rel_virtual)
+                    scores[seq][i] = ent_scores.view(-1)
 
 
         return scores    
@@ -2615,7 +2654,7 @@ class KBCModel(nn.Module, ABC):
             objective = self.t_norm
 
         chains, chain_instructions = env.chains, env.chain_instructions
-
+        
         # chain_instructions = ['hop_0_1']
         # chains = [part1, part2]
         # part1 = [lhs_1, rels_1, rhs_1]
@@ -2851,9 +2890,8 @@ class KBCModel(nn.Module, ABC):
 
             else:
                 assert False, "Batch Scores are empty: an error went uncaught."
-            print('scores_found')
-            sys.exit()
             res = scores
+
 
         # res has the score of each entity for each query
         return res
