@@ -21,7 +21,6 @@ def evaluation(scores_all, queries, test_ans, test_ans_hard, seq):
         
 
         for query_id, query in enumerate(tqdm(queries)):
-
             score = scores[query_id]
             score -= (torch.min(score) - 1)
             ans = test_ans[query]

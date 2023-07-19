@@ -19,13 +19,14 @@ def run(kbc_path, dataset_hard, dataset_complete, dataset_name, t_norm='min', ca
     chain_type_experiments = {'1_1': QuerDAG.TYPE1_1.value, '1_2': QuerDAG.TYPE1_2.value, '1_3': QuerDAG.TYPE1_3.value,
     '2_2':QuerDAG.TYPE2_2.value, '2_2_disj': QuerDAG.TYPE2_2_disj.value, '1_4': QuerDAG.TYPE1_4.value, '2_3': QuerDAG.TYPE2_3.value
     , '3_3': QuerDAG.TYPE3_3.value, '4_3': QuerDAG.TYPE4_3.value, '4_3_disj':QuerDAG.TYPE4_3_disj.value, '1_3_joint': QuerDAG.TYPE1_3_joint.value,
-    '1_2_seq': QuerDAG.TYPE1_2_seq.value, '1_3_seq': QuerDAG.TYPE1_3_seq.value}
+    '1_2_seq': QuerDAG.TYPE1_2_seq.value, '1_3_seq': QuerDAG.TYPE1_3_seq.value, '2_2_seq': QuerDAG.TYPE2_2_seq.value, '2_3_seq': QuerDAG.TYPE2_3_seq.value,
+    '3_3_seq': QuerDAG.TYPE3_3_seq.value, '4_3_seq': QuerDAG.TYPE4_3_seq.value, '1_1_seq': QuerDAG.TYPE1_1_seq.value}
     experiments = [t.value for t in QuerDAG]
-    
+
     for key in chain_type_experiments.keys():
         if key != chain_type:
             experiments.remove(chain_type_experiments[key])
-    
+
     
     # experiments = [t.value for t in QuerDAG]
     # experiments.remove(QuerDAG.TYPE1_1.value)
@@ -54,7 +55,6 @@ def answer(kbc_path, dataset_hard, dataset_complete, t_norm='min', query_type=Qu
     # takes each query chain, creates instruction on what type it is, and replaces each entity with its embedding
     env = preload_env(kbc_path, dataset_hard, query_type, mode='hard', kg_path=kg_path, explain=explain, valid_heads=valid_heads, valid_tails=valid_tails)
     env = preload_env(kbc_path, dataset_complete, query_type, mode='complete', kg_path=kg_path,explain=explain, valid_heads=valid_heads, valid_tails=valid_tails)
-
     if len(env.parts) == 2:
         part1, part2 = env.parts
     elif len(env.parts) == 3:
@@ -63,6 +63,8 @@ def answer(kbc_path, dataset_hard, dataset_complete, t_norm='min', query_type=Qu
         part1, part2, part3, part4 = env.parts
     elif len(env.parts) == 5:
         part1, part2, part3, part4, part5 = env.parts
+    elif len(env.parts) == 6:
+        part1, part2, part3, part4, part5, part6 = env.parts
     test_ans_hard = env.target_ids_hard
     # tells us how many parts there are in each query
     # if '1' in env.chain_instructions[-1][-1]:

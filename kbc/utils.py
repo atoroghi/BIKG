@@ -191,6 +191,11 @@ class QuerDAG(enum.Enum):
     TYPE1_3_joint = '1_3_joint'
     TYPE1_2_seq = "1_2_seq"
     TYPE1_3_seq = "1_3_seq"
+    TYPE2_2_seq = "2_2_seq"
+    TYPE2_3_seq = "2_3_seq"
+    TYPE3_3_seq = "3_3_seq"
+    TYPE4_3_seq = "4_3_seq"
+    TYPE1_1_seq = "1_1_seq"
 
 
 class DynKBCSingleton:
@@ -322,19 +327,24 @@ def get_keys_and_targets_bpl(parts, users, items, graph_type):
 def get_keys_and_targets(parts, targets, graph_type):
     if len(parts) == 1:
         part1 = parts[0]
-        part2, part3, part4, part5 = None, None, None, None
+        part2, part3, part4, part5, part6, part7, part8, part9 = None, None, None, None, None,None, None, None
     if len(parts) == 2:
         part1, part2 = parts
-        part3, part4, part5 = None, None, None
+        part3, part4, part5, part6, part7, part8, part9 = None, None, None, None,None, None, None
     elif len(parts) == 3:
         part1, part2, part3 = parts
-        part4, part5 = None, None
+        part4, part5, part6, part7, part8, part9 = None, None, None, None, None, None
     elif len(parts) == 4:
         part1, part2, part3, part4 = parts
-        part5 = None
+        part5, part6, part7, part8, part9 = None, None, None, None, None
     elif len(parts) == 5:
-        part1, part2, part3, part4, part5 = parts
-
+        part1, part2, part3, part4, part5= parts
+        part6, part7, part8, part9 = None, None, None, None
+    elif len(parts) == 6:
+        part1, part2, part3, part4, part5, part6 = parts
+        part7, part8, part9 = None, None, None
+    elif len(parts) == 9:
+        part1, part2, part3, part4, part5, part6, part7, part8, part9 = parts
     # "keys" are the unique chain queries we want to answer in a str format(e.g., (21,2,4)_(5,6,8))
     # target_ids is a dict that maps these keys to the target id of the chain query
     target_ids = {}
@@ -342,7 +352,11 @@ def get_keys_and_targets(parts, targets, graph_type):
 
     for chain_iter in range(len(part1)):
         # parts of the chain are concatenated to form a key
-        if len(parts) == 5:
+        if len(parts) == 9:
+            key = part1[chain_iter] + part2[chain_iter] + part3[chain_iter] + part4[chain_iter] + part5[chain_iter] + part6[chain_iter] + part7[chain_iter] + part8[chain_iter] + part9[chain_iter]
+        if len(parts) == 6:
+            key = part1[chain_iter] + part2[chain_iter] + part3[chain_iter] + part4[chain_iter] + part5[chain_iter] + part6[chain_iter]
+        elif len(parts) == 5:
             key = part1[chain_iter] + part2[chain_iter] + part3[chain_iter] + part4[chain_iter] + part5[chain_iter]
         elif len(parts) == 4:
             key = part1[chain_iter] + part2[chain_iter] + part3[chain_iter] + part4[chain_iter]
@@ -1526,6 +1540,176 @@ def preload_env(kbc_path, dataset, graph_type, mode="complete", kg_path=None,
             parts = [part1, part2, part3, part4, part5]
             intact_parts = [intact_part1, intact_part2, intact_part3, intact_part4, intact_part5]
             possible_heads_emb = []; possible_tails_emb = []; users=[]; items=[]
+        
+        elif QuerDAG.TYPE2_2_seq.value == graph_type:
+            raw = dataset.type2_2chain
+            type2_2chain = []
+            for i in range(len(raw)):
+                type2_2chain.append(raw[i].data)
+            part1 = [x['raw_chain'][0] for x in type2_2chain]
+            part2 = [x['raw_chain'][1] for x in type2_2chain]
+            part3 = [x['raw_chain'][2] for x in type2_2chain]
+            part4 = [x['raw_chain'][3] for x in type2_2chain]
+            part5 = [x['raw_chain'][4] for x in type2_2chain]
+            part6 = [x['raw_chain'][5] for x in type2_2chain]
+            intact_part1 = part1.copy(); intact_part2 = part2.copy(); intact_part3 = part3.copy(); intact_part4 = part4.copy()
+            intact_part5 = part5.copy(); intact_part6 = part6.copy()
+            flattened_part1 = []; flattened_part2 = []; flattened_part3 = []; flattened_part4 = []
+            flattened_part5 = []; flattened_part6 = []
+            targets = []
+            for chain_iter in range(len(part2)):
+                flattened_part1.append([part1[chain_iter][0],part1[chain_iter][1],-(chain_iter+1234)])
+                flattened_part2.append([part2[chain_iter][0],part2[chain_iter][1],-(chain_iter+1234)])
+                flattened_part3.append([part3[chain_iter][0],part3[chain_iter][1],-(chain_iter+1234)])
+                flattened_part4.append([part4[chain_iter][0],part4[chain_iter][1],-(chain_iter+1234)])
+                flattened_part5.append([part5[chain_iter][0],part5[chain_iter][1],-(chain_iter+1234)])
+                flattened_part6.append([part6[chain_iter][0],part6[chain_iter][1],-(chain_iter+1234)])
+                targets.append(part2[chain_iter][2])
+            part1 = flattened_part1; part2 = flattened_part2; part3 = flattened_part3; part4 = flattened_part4
+            part5 = flattened_part5; part6 = flattened_part6
+
+            target_ids, keys = get_keys_and_targets([part1,part2, part3, part4, part5, part6], targets, graph_type)  
+            if not chain_instructions:
+                chain_instructions = create_instructions([part1[0], part2[0], part3[0], part4[0], part5[0], part6[0]])
+            device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+            part1 = np.array(part1); part1 = torch.tensor(part1.astype('int64'), device=device)
+            part2 = np.array(part2); part2 = torch.tensor(part2.astype('int64'), device=device)
+            part3 = np.array(part3); part3 = torch.tensor(part3.astype('int64'), device=device)
+            part4 = np.array(part4); part4 = torch.tensor(part4.astype('int64'), device=device)
+            part5 = np.array(part5); part5 = torch.tensor(part5.astype('int64'), device=device)
+            part6 = np.array(part6); part6 = torch.tensor(part6.astype('int64'), device=device)
+            chain1 = kbc.model.get_full_embeddigns(part1); chain2 = kbc.model.get_full_embeddigns(part2)
+            chain3 = kbc.model.get_full_embeddigns(part3); chain4 = kbc.model.get_full_embeddigns(part4)
+            chain5 = kbc.model.get_full_embeddigns(part5); chain6 = kbc.model.get_full_embeddigns(part6)
+            lhs_norm = 0.0
+            for lhs_emb in chain1[0]:
+                lhs_norm += torch.norm(lhs_emb)
+            lhs_norm /= len(chain1[0])
+            chains = [chain1, chain2, chain3, chain4, chain5, chain6]
+            parts = [part1, part2, part3, part4, part5, part6]
+            intact_parts = [intact_part1, intact_part2, intact_part3, intact_part4, intact_part5, intact_part6]
+            possible_heads_emb = []; possible_tails_emb = []; users=[]; items=[]
+        elif QuerDAG.TYPE2_3_seq.value == graph_type:
+            raw = dataset.type2_3chain
+            type2_3chain = []
+            for i in range(len(raw)):
+                type2_3chain.append(raw[i].data)
+            part1 = [x['raw_chain'][0] for x in type2_3chain]
+            part2 = [x['raw_chain'][1] for x in type2_3chain]
+            part3 = [x['raw_chain'][2] for x in type2_3chain]
+            part4 = [x['raw_chain'][3] for x in type2_3chain]
+            part5 = [x['raw_chain'][4] for x in type2_3chain]
+            part6 = [x['raw_chain'][5] for x in type2_3chain]
+            part7 = [x['raw_chain'][6] for x in type2_3chain]
+            part8 = [x['raw_chain'][7] for x in type2_3chain]
+            part9 = [x['raw_chain'][8] for x in type2_3chain]
+            intact_part1 = part1.copy(); intact_part2 = part2.copy(); intact_part3 = part3.copy(); intact_part4 = part4.copy(); intact_part5 = part5.copy(); intact_part6 = part6.copy()
+            intact_part7 = part7.copy(); intact_part8 = part8.copy(); intact_part9 = part9.copy()
+            flattened_part1 = []; flattened_part2 = []; flattened_part3 = []; flattened_part4 = []; flattened_part5 = []; flattened_part6 = []
+            flattened_part7 = []; flattened_part8 = []; flattened_part9 = []
+            targets = []
+            for chain_iter in range(len(part2)):
+                flattened_part1.append([part1[chain_iter][0],part1[chain_iter][1],-(chain_iter+1234)])
+                flattened_part2.append([part2[chain_iter][0],part2[chain_iter][1],-(chain_iter+1234)])
+                flattened_part3.append([part3[chain_iter][0],part3[chain_iter][1],-(chain_iter+1234)])
+                flattened_part4.append([part4[chain_iter][0],part4[chain_iter][1],-(chain_iter+1234)])
+                flattened_part5.append([part5[chain_iter][0],part5[chain_iter][1],-(chain_iter+1234)])
+                flattened_part6.append([part6[chain_iter][0],part6[chain_iter][1],-(chain_iter+1234)])
+                flattened_part7.append([part7[chain_iter][0],part7[chain_iter][1],-(chain_iter+1234)])
+                flattened_part8.append([part8[chain_iter][0],part8[chain_iter][1],-(chain_iter+1234)])
+                flattened_part9.append([part9[chain_iter][0],part9[chain_iter][1],-(chain_iter+1234)])
+                targets.append(part2[chain_iter][2])
+            part1 = flattened_part1; part2 = flattened_part2; part3 = flattened_part3; part4 = flattened_part4; part5 = flattened_part5; part6 = flattened_part6
+            part7 = flattened_part7; part8 = flattened_part8; part9 = flattened_part9
+            target_ids, keys = get_keys_and_targets([part1,part2, part3, part4, part5, part6, part7, part8, part9], targets, graph_type)
+            if not chain_instructions:
+                chain_instructions = create_instructions([part1[0], part2[0], part3[0], part4[0], part5[0], part6[0], part7[0], part8[0], part9[0]])
+            device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+            part1 = np.array(part1); part1 = torch.tensor(part1.astype('int64'), device=device)
+            part2 = np.array(part2); part2 = torch.tensor(part2.astype('int64'), device=device)
+            part3 = np.array(part3); part3 = torch.tensor(part3.astype('int64'), device=device)
+            part4 = np.array(part4); part4 = torch.tensor(part4.astype('int64'), device=device)
+            part5 = np.array(part5); part5 = torch.tensor(part5.astype('int64'), device=device)
+            part6 = np.array(part6); part6 = torch.tensor(part6.astype('int64'), device=device)
+            part7 = np.array(part7); part7 = torch.tensor(part7.astype('int64'), device=device)
+            part8 = np.array(part8); part8 = torch.tensor(part8.astype('int64'), device=device)
+            part9 = np.array(part9); part9 = torch.tensor(part9.astype('int64'), device=device)
+            chain1 = kbc.model.get_full_embeddigns(part1); chain2 = kbc.model.get_full_embeddigns(part2)
+            chain3 = kbc.model.get_full_embeddigns(part3); chain4 = kbc.model.get_full_embeddigns(part4)
+            chain5 = kbc.model.get_full_embeddigns(part5); chain6 = kbc.model.get_full_embeddigns(part6)
+            chain7 = kbc.model.get_full_embeddigns(part7); chain8 = kbc.model.get_full_embeddigns(part8)
+            chain9 = kbc.model.get_full_embeddigns(part9)
+            lhs_norm = 0.0
+            for lhs_emb in chain1[0]:
+                lhs_norm += torch.norm(lhs_emb)
+            lhs_norm /= len(chain1[0])
+            chains = [chain1, chain2, chain3, chain4, chain5, chain6, chain7, chain8, chain9]
+            parts = [part1, part2, part3, part4, part5, part6, part7, part8, part9]
+            intact_parts = [intact_part1, intact_part2, intact_part3, intact_part4, intact_part5, intact_part6, intact_part7, intact_part8, intact_part9]
+            possible_heads_emb = []; possible_tails_emb = []; users=[]; items=[]
+            
+        elif QuerDAG.TYPE3_3_seq.value == graph_type:
+            raw = dataset.type3_3chain
+            type3_3chain = []
+            for i in range(len(raw)):
+                type3_3chain.append(raw[i].data)
+            part1 = [x['raw_chain'][0] for x in type3_3chain]
+            part2 = [x['raw_chain'][1] for x in type3_3chain]
+            part3 = [x['raw_chain'][2] for x in type3_3chain]
+            part4 = [x['raw_chain'][3] for x in type3_3chain]
+            part5 = [x['raw_chain'][4] for x in type3_3chain]
+            part6 = [x['raw_chain'][5] for x in type3_3chain]
+            part7 = [x['raw_chain'][6] for x in type3_3chain]
+            part8 = [x['raw_chain'][7] for x in type3_3chain]
+            part9 = [x['raw_chain'][8] for x in type3_3chain]
+            intact_part1 = part1.copy(); intact_part2 = part2.copy(); intact_part3 = part3.copy(); intact_part4 = part4.copy(); intact_part5 = part5.copy(); intact_part6 = part6.copy()
+            intact_part7 = part7.copy(); intact_part8 = part8.copy(); intact_part9 = part9.copy()
+            flattened_part1 = []; flattened_part2 = []; flattened_part3 = []; flattened_part4 = []; flattened_part5 = []; flattened_part6 = []
+            flattened_part7 = []; flattened_part8 = []; flattened_part9 = []
+            targets = []
+
+            for chain_iter in range(len(part2)):
+                flattened_part1.append([part1[chain_iter][0],part1[chain_iter][1],part1[chain_iter][2]])
+                flattened_part2.append([part2[chain_iter][0],part2[chain_iter][1],-(chain_iter+1234)])
+                flattened_part3.append([part3[chain_iter][0],part3[chain_iter][1],-(chain_iter+1234)])
+                flattened_part4.append([part4[chain_iter][0],part4[chain_iter][1],part4[chain_iter][2]])
+                flattened_part5.append([part5[chain_iter][0],part5[chain_iter][1],-(chain_iter+1234)])
+                flattened_part6.append([part6[chain_iter][0],part6[chain_iter][1],-(chain_iter+1234)])
+                flattened_part7.append([part7[chain_iter][0],part7[chain_iter][1],part7[chain_iter][2]])
+                flattened_part8.append([part8[chain_iter][0],part8[chain_iter][1],-(chain_iter+1234)])
+                flattened_part9.append([part9[chain_iter][0],part9[chain_iter][1],-(chain_iter+1234)])
+                targets.append(part2[chain_iter][2])
+            part1 = flattened_part1; part2 = flattened_part2; part3 = flattened_part3; part4 = flattened_part4; part5 = flattened_part5; part6 = flattened_part6
+            part7 = flattened_part7; part8 = flattened_part8; part9 = flattened_part9
+            target_ids, keys = get_keys_and_targets([part1,part2, part3, part4, part5, part6, part7, part8, part9], targets, graph_type)
+            if not chain_instructions:
+                chain_instructions = create_instructions([part1[0], part2[0], part3[0], part4[0], part5[0], part6[0], part7[0], part8[0], part9[0]])
+            device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+            part1 = np.array(part1); part1 = torch.tensor(part1.astype('int64'), device=device)
+            part2 = np.array(part2); part2 = torch.tensor(part2.astype('int64'), device=device)
+            part3 = np.array(part3); part3 = torch.tensor(part3.astype('int64'), device=device)
+            part4 = np.array(part4); part4 = torch.tensor(part4.astype('int64'), device=device)
+            part5 = np.array(part5); part5 = torch.tensor(part5.astype('int64'), device=device)
+            part6 = np.array(part6); part6 = torch.tensor(part6.astype('int64'), device=device)
+            part7 = np.array(part7); part7 = torch.tensor(part7.astype('int64'), device=device)
+            part8 = np.array(part8); part8 = torch.tensor(part8.astype('int64'), device=device)
+            part9 = np.array(part9); part9 = torch.tensor(part9.astype('int64'), device=device)
+            chain1 = kbc.model.get_full_embeddigns(part1); chain2 = kbc.model.get_full_embeddigns(part2)
+            chain3 = kbc.model.get_full_embeddigns(part3); chain4 = kbc.model.get_full_embeddigns(part4)
+            chain5 = kbc.model.get_full_embeddigns(part5); chain6 = kbc.model.get_full_embeddigns(part6)
+            chain7 = kbc.model.get_full_embeddigns(part7); chain8 = kbc.model.get_full_embeddigns(part8)
+            chain9 = kbc.model.get_full_embeddigns(part9)
+            lhs_norm = 0.0
+            for lhs_emb in chain1[0]:
+                lhs_norm += torch.norm(lhs_emb)
+            lhs_norm /= len(chain1[0])
+            chains = [chain1, chain2, chain3, chain4, chain5, chain6, chain7, chain8, chain9]
+            parts = [part1, part2, part3, part4, part5, part6, part7, part8, part9]
+            intact_parts = [intact_part1, intact_part2, intact_part3, intact_part4, intact_part5, intact_part6, intact_part7, intact_part8, intact_part9]
+            possible_heads_emb = []; possible_tails_emb = []; users=[]; items=[]
+        
+        
+        
         else:
             chains = dataset['chains']
             parts = dataset['parts']
