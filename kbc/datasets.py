@@ -89,17 +89,19 @@ class Dataset(object):
                 tmp = torch.clone(q[:, 0])
                 q[:, 0] = q[:, 2]
                 q[:, 2] = tmp
-#
-            #    # Note: in q2b relations are labeled as
-            #    # [rel1, rel1inv, rel2, rel2inv, ...]
-            #    # In contrast, KBC uses
-            #    # [rel1, rel2, ..., rel1inv, rel2inv, ...]
-            #    # That's the reason for this:
-            #    rels = q[:, 1].clone()
-            #    q[:, 1][rels % 2 == 0] += 1
-            #    q[:, 1][rels % 2 != 0] -= 1
-            #    # Instead of:
-            #    # q[:, 1] += self.n_predicates // 2
+            #NOTE
+            # Comment these lines if rev relations do not have their numbers (my Simple)
+            # OW, uncomment them
+                # Note: in q2b relations are labeled as
+                # [rel1, rel1inv, rel2, rel2inv, ...]
+                # In contrast, KBC uses
+                # [rel1, rel2, ..., rel1inv, rel2inv, ...]
+                # That's the reason for this:
+                rels = q[:, 1].clone()
+                q[:, 1][rels % 2 == 0] += 1
+                q[:, 1][rels % 2 != 0] -= 1
+                # Instead of:
+                # q[:, 1] += self.n_predicates // 2
 
             # get the ranks of the correct answers (while skipping the to_skip) and compute the mean reciprocal rank and hits@k
 

@@ -2573,6 +2573,7 @@ class KBCModel(nn.Module, ABC):
                     scores[seq][i] = ent_scores.view(-1)
 
         elif env.graph_type == '3_3_seq':
+            last_step = False
             gt_targets = env.target_ids_hard
             chains = env.chains
             chain1 , chain2, chain3, chain4, chain5, chain6, chain7, chain8, chain9 = chains
@@ -2602,6 +2603,7 @@ class KBCModel(nn.Module, ABC):
                     evidence3_mean = rhs_2d_mean_3
 
                     evidence_mean = (evidence1_mean + evidence3_mean) / 2
+                    target_emb = (1 /(cov_anchor + candidates * cov_target)) * ((cov_anchor)*target_emb + (2*candidates * cov_target)*evidence_mean)
                     cov_target = (cov_target * cov_anchor) /(cov_anchor + 2* candidates * cov_target)
                     rel_virtual = torch.ones_like(target_emb)
                     ent_scores = self.forward_emb(target_emb, rel_virtual)
@@ -2623,11 +2625,11 @@ class KBCModel(nn.Module, ABC):
                     if seq==0:
                         target_emb = torch.zeros((1, embedding_size)).to(chains[0][0].device)
                     chain1_seq, chain2_seq, chain3_seq = seq_chains[seq]
-                    new_env.chains = [(chain1_seq[0][i].view(1,-1), chain1_seq[1][i].view(1,-1), chain1_seq[2][i].view(1,-1)), (chain2_seq[0][i].view(1,-1), chain2_seq[1][i].view(1,-1), chain2_seq[2][i].view(1,-1))]
+                    new_env.chains = [(chain1_seq[0][i].view(1,-1), chain1_seq[1][i].view(1,-1), chain1_seq[2]), (chain2_seq[0][i].view(1,-1), chain2_seq[1][i].view(1,-1), chain2_seq[2])]
                     scores_var = self.query_answering_BF(new_env, candidates=candidates, t_norm=t_norm, batch_size=batch_size, scores_normalize=scores_normalize, explain=explain)
                     _, top_var_indices = torch.topk(scores_var, candidates, dim=1)
-                    top_var_embeddings = self.ent_embeddings(top_var_indices[0])
-                    evidence_mean = (torch.mean(top_var_embeddings, dim=1).view(1, embedding_size)) * (chain3_seq[1][i].view(1, embedding_size))
+                    top_var_embeddings = self.entity_embeddings(top_var_indices[0])
+                    evidence_mean = (torch.mean(top_var_embeddings, dim=0).view(1, embedding_size)) * (chain3_seq[1][i].view(1, embedding_size))
                     target_emb = (1 /(cov_anchor + candidates * cov_target)) * ((cov_anchor)*target_emb + (candidates * cov_target)*evidence_mean)
                     cov_target = (cov_target * cov_anchor) /(cov_anchor + candidates * cov_target)
                     rel_virtual = torch.ones_like(target_emb)
@@ -2902,8 +2904,12 @@ class KBCModel(nn.Module, ABC):
                             last_hop = True
                             # chain type is 4_3
                             if len(chain_instructions) == 6 and chain_instructions[0] == 'intersect_0_1' and last_step:
-                                seq_scores.append(batch_scores)
-                                seq_rhs_3d.append(rhs_3d)
+                                #seq_scores.append(batch_scores)
+                                #seq_rhs_3d.append(rhs_3d)
+                                if inst_ind == 1:
+                                    seq_scores = 1 * batch_scores
+                                else:
+                                    seq_scores = seq_scores * batch_scores
                                 # TODO: resetting these params. Maybe do the same for 3_3
 
                                 if ind != 8:
@@ -3050,10 +3056,15 @@ class KBCModel(nn.Module, ABC):
                                     candidate_cache[f"lhs_{ind+1}"] = (batch_scores, rhs_3d)
                                 
                                 if ind == indices[-1] and len(chain_instructions) == 6 and chain_instructions[0] == 'hop_0_1':
-                                    seq_scores.append(batch_scores)
-                                    seq_rhs_3d.append(rhs_3d)
+                                    #seq_scores.append(batch_scores)
+                                    #seq_rhs_3d.append(rhs_3d)
+                                    if inst_ind == 1:
+                                        seq_scores = 1 * batch_scores
+                                    else:
+                                        seq_scores = seq_scores * batch_scores
                                     if ind == 8:
-                                        batch_scores = seq_scores[2]
+                                        #batch_scores = seq_scores[2]
+                                        batch_scores = seq_scores
                             else:
                                 
 
@@ -3080,7 +3091,8 @@ class KBCModel(nn.Module, ABC):
                 # [B * entites * S ]
                 # S ==  K**(V-1)
                 if len(chain_instructions) == 6:
-                    batch_scores = seq_scores[0] * seq_scores[1] * seq_scores[2]
+                    #batch_scores = seq_scores[0] * seq_scores[1] * seq_scores[2]
+                    batch_scores = seq_scores
 
                 scores_2d = batch_scores.view(batch_size, -1, nb_ent)
                 # print(scores_2d.shape)

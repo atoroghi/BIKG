@@ -58,7 +58,7 @@ if __name__ == "__main__":
     extended_chain = ChaineDataset(Dataset(osp.join('data',args.dataset,'kbc_data')),5000)
     #extended_chain..set_attr(type1_2chain=chain1_2)
     chain_types = ['1_1' ,'1_2', '1_3', '2_2', '2_3', '3_3', '4_3']
-    #chain_types = ['1_3']
+    #chain_types = ['4_3']
     #data_name = str(args.dataset) + '_'+ mode +'_' +'hard_seq'
     data_name = str(args.dataset) + '_'+ mode +'_' +f'{hardness}_seq'
 
@@ -418,9 +418,7 @@ if __name__ == "__main__":
                 considered_dataset = valid
             enough = 0
             for j, triple in tqdm.tqdm(enumerate(considered_dataset)):
-                if len(extended_chain.type4_3chain) > 3000:
-                    for z in range(5):
-                        print(extended_chain.type4_3chain[z].data['raw_chain'])
+                if len(extended_chain.type4_3chain) > 3000:   
                     print("number of extracted chains for 4_3:", len(extended_chain.type4_3chain)) 
                     break
                 var3, rel3, target = triple
@@ -435,11 +433,16 @@ if __name__ == "__main__":
                         removed_vars3.append(other_var3)
                 other_vars3 = other_vars3.difference(set(removed_vars3))
                 vars3 = [var3] + list(other_vars3)
+
                 all_targets_hard = set(considered_dataset[np.where((considered_dataset[:, 0] == var3) & (considered_dataset[:,1]==rel3))][:,2])
                 all_targets_complete = set(to_skip['rhs'][(var3, rel3)])
+
+
+
                 for other_var3 in other_vars3:
                     all_targets_hard = all_targets_hard.intersection(set(considered_dataset[np.where((considered_dataset[:, 0] == other_var3) & (considered_dataset[:,1]==rel3))][:,2]))
                     all_targets_complete = all_targets_complete.intersection(set(to_skip['rhs'][(other_var3, rel3)]))
+
                 if len(all_targets_hard) < 1 or len(all_targets_complete) < 1:
                     continue
                 all_targets_hard = list(all_targets_hard)
@@ -451,7 +454,7 @@ if __name__ == "__main__":
                     if len(neighbour_rels) < 2:
                         continue
                     if len(neighbour_rels) > 4:
-                        neighbour_rels = random.sample(neighbour_rels, 3)
+                        neighbour_rels = neighbour_rels[:3]
                     #rel_pairs = list(combinations_with_replacement(neighbour_rels, 2))
                     rel_pairs = list(combinations(neighbour_rels, 2))
                     for rel_pair in rel_pairs:
@@ -465,10 +468,11 @@ if __name__ == "__main__":
                             new_raw_chain = [ [anchors1[0], rel1, -1 ], [anchors2[0], rel2, -1], [-1, rel3,  all_targets_hard], 
                                             [anchors1[1], rel1, -1 ], [anchors2[1], rel2, -1], [-1, rel3,  all_targets_hard],
                                             [anchors1[2], rel1, -1 ], [anchors2[2], rel2, -1], [-1, rel3,  all_targets_hard]]
+
                         elif hardness == 'complete':
                             new_raw_chain = [ [anchors1[0], rel1, -1 ], [anchors2[0], rel2, -1], [-1, rel3,  all_targets_complete], 
                                             [anchors1[1], rel1, -1 ], [anchors2[1], rel2, -1], [-1, rel3,  all_targets_complete],
-                                            [anchors1[2], rel1, -1 ], [anchors2[2], rel2, -1], [-1, rel3,  all_targets_complete]]
+                                            [anchors1[2], rel1, -1 ], [anchors2[2], rel2, -1], [-1, rel3,  all_targets_complete]]            
                         used_targets.append(target)
                         new_chain = Chain()
                         new_chain.data['type'] = '4chain3'

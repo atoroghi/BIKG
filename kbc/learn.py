@@ -28,10 +28,13 @@ def avg_both(mrrs: Dict[str, float], hits: Dict[str, torch.FloatTensor]):
 	:param hits:
 	:return:
 	"""
-	#m = (mrrs['lhs'] + mrrs['rhs']) / 2.
-	#h = (hits['lhs'] + hits['rhs']) / 2.
-	m = mrrs['rhs']
-	h = hits['rhs']
+	# TODO
+	# If reverese direction has not its own numbers in the dataset, then the next two lines are commented. OW, we won't take the average.
+	# the next two are cqd style. 3 and 4 my style
+	m = (mrrs['lhs'] + mrrs['rhs']) / 2.
+	h = (hits['lhs'] + hits['rhs']) / 2.
+	# m = mrrs['rhs']
+	# h = hits['rhs']
 	return {'MRR': m, 'hits@[1,3,10]': h}
 
 
@@ -110,7 +113,7 @@ def kbc_model_load(model_path):
 	identifiers = identifiers.split('-')
 
 	dataset_name, timestamp = identifiers[0].strip(), identifiers[-1][:-3].strip()
-	if "MOvie" in dataset_name:
+	if "Movie" in dataset_name:
 		dataset_name = "Movielens"
 	if "YAGO" in dataset_name:
 		dataset_name = "YAGO3-10"

@@ -39,6 +39,7 @@ def run(kbc_path, dataset_hard, dataset_complete, dataset_name, t_norm='min', ca
     print(kbc_path, dataset_name, t_norm, candidates)
 
 
+
     path_entries = kbc_path.split('-')
     rank = path_entries[path_entries.index('rank') + 1] if 'rank' in path_entries else 'None'
 
@@ -66,6 +67,7 @@ def answer(kbc_path, dataset_hard, dataset_complete, t_norm='min', query_type=Qu
     elif len(env.parts) == 6:
         part1, part2, part3, part4, part5, part6 = env.parts
     test_ans_hard = env.target_ids_hard
+
     # tells us how many parts there are in each query
     # if '1' in env.chain_instructions[-1][-1]:
     #     part1, part2 = env.parts
