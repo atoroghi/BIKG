@@ -57,7 +57,7 @@ if __name__ == "__main__":
     all_data = np.concatenate((train, test, valid), axis=0)
     extended_chain = ChaineDataset(Dataset(osp.join('data',args.dataset,'kbc_data')),5000)
     #extended_chain..set_attr(type1_2chain=chain1_2)
-    chain_types = ['1_1' ,'1_2', '1_3', '2_2', '2_3', '3_3', '4_3']
+    chain_types = ['1_1' ,'1_2', '1_3', '2_2', '2_3', '3_3', '4_3', '2_2_disj', '4_3_disj']
     #chain_types = ['4_3']
     #data_name = str(args.dataset) + '_'+ mode +'_' +'hard_seq'
     data_name = str(args.dataset) + '_'+ mode +'_' +f'{hardness}_seq'
@@ -406,7 +406,71 @@ if __name__ == "__main__":
                         new_chain.data['optimisable'].append(new_raw_chain[0][2])
                         extended_chain.type2_2chain.append(new_chain)
 
-                            
+        if chain_type == '2_2_disj':
+            used_targets = []
+            if mode == 'test':
+                considered_dataset = test
+            elif mode == 'valid':
+                considered_dataset = valid
+            enough = 0
+            for j, triple in tqdm.tqdm(enumerate(considered_dataset)):
+                if len(extended_chain.type2_2chain_u) > 3000:
+                    print("number of extracted chains for 2_2_disj:", len(extended_chain.type2_2chain_u)) 
+                    break
+                anch1, rel1, target = triple
+                if target in used_targets:
+                    continue
+                rel1_inv = get_invrel(rel1)
+                # in fact other_anch1 also includes anch1
+                other_anchs1 = set(considered_dataset[np.where((considered_dataset[:, 2] == target) & (considered_dataset[:,1]==rel1))][:,0])
+                removed_anchs1 = []
+                for other_anch1 in other_anchs1:
+                    if (other_anch1, rel1) not in to_skip['rhs']:
+                        removed_anchs1.append(other_anch1)
+                other_anchs1 = other_anchs1.difference(set(removed_anchs1))
+                anchs1 = [anch1] + list(other_anchs1)
+                if len(other_anchs1) < 3:
+                    continue
+                other_anchs1 = list(other_anchs1)[:3]
+                all_targets_hard = set(considered_dataset[np.where((considered_dataset[:, 0] == anch1) & (considered_dataset[:,1]==rel1))][:,2])
+                all_targets_complete = set(to_skip['rhs'][(anch1, rel1)])
+                for other_anch in other_anchs1:
+                    all_targets_hard = all_targets_hard.intersection(set(considered_dataset[np.where((considered_dataset[:, 0] == other_anch) & (considered_dataset[:,1]==rel1))][:,2]))
+                    all_targets_complete = all_targets_complete.intersection(set(to_skip['rhs'][(other_anch, rel1)]))
+                if len(all_targets_hard) < 1 or len(all_targets_complete) < 1:
+                    continue
+                all_targets_hard = list(all_targets_hard)
+                all_targets_complete = list(all_targets_complete)
+
+                for target in all_targets_hard:
+                    neighbour_rels = list(set(all_data[np.where((all_data[:,2]==target))][:,1]))
+                    for neighbour_rel in neighbour_rels:
+                        rel2 = neighbour_rel
+                        anchors2 = list(set(all_data[np.where((all_data[:,2]==target) & (all_data[:,1]==neighbour_rel))][:,0]))
+                        if len(anchors2) < 3:
+                            continue
+                        
+                        anchors1 = other_anchs1
+                        if hardness == 'hard':
+                            new_raw_chain = [ [anchors1[0], rel1, all_targets_hard], [anchors2[0], rel2, all_targets_hard],
+                             [anchors1[1], rel1, all_targets_hard], [anchors2[1], rel2, all_targets_hard],
+                             [anchors1[2], rel1, all_targets_hard], [anchors2[2], rel2, all_targets_hard]]
+                        elif hardness == 'complete':
+                            new_raw_chain = [ [anchors1[0], rel1, all_targets_complete], [anchors2[0], rel2, all_targets_complete],
+                             [anchors1[1], rel1, all_targets_complete], [anchors2[1], rel2, all_targets_complete],
+                             [anchors1[2], rel1, all_targets_complete], [anchors2[2], rel2, all_targets_complete]]
+                        used_targets.append(target)
+                        new_chain = Chain()
+                        new_chain.data['type'] = '2chain2_disj'
+                        new_chain.data['raw_chain'] = new_raw_chain
+                        new_chain.data['anchors'].append(new_raw_chain[0][0])
+                        new_chain.data['anchors'].append(new_raw_chain[1][0])
+                        new_chain.data['anchors'].append(new_raw_chain[2][0])
+                        new_chain.data['anchors'].append(new_raw_chain[3][0])
+                        new_chain.data['anchors'].append(new_raw_chain[4][0])
+                        new_chain.data['anchors'].append(new_raw_chain[5][0])
+                        new_chain.data['optimisable'].append(new_raw_chain[0][2])
+                        extended_chain.type2_2chain_u.append(new_chain)
 
         if chain_type == '4_3':
             # raw chain for original 4_3: [[62, 51, -1], [2388, 30, -1], [-1, 381, [9009, 13493, 11703]]]
@@ -488,6 +552,90 @@ if __name__ == "__main__":
                         new_chain.data['optimisable'].append(new_raw_chain[3][2])
                         new_chain.data['optimisable'].append(new_raw_chain[5][2])
                         extended_chain.type4_3chain.append(new_chain)
+
+
+        if chain_type == '4_3_disj':
+            # raw chain for original 4_3: [[62, 51, -1], [2388, 30, -1], [-1, 381, [9009, 13493, 11703]]]
+
+            used_targets = []
+            if mode == 'test':
+                considered_dataset = test
+            elif mode == 'valid':
+                considered_dataset = valid
+            enough = 0
+            for j, triple in tqdm.tqdm(enumerate(considered_dataset)):
+                if len(extended_chain.type4_3chain_u) > 3000:   
+                    print("number of extracted chains for 4_3_disj:", len(extended_chain.type4_3chain_u)) 
+                    break
+                var3, rel3, target = triple
+                if target in used_targets:
+                    continue
+                rel3_inv = get_invrel(rel3)
+                # in fact other_vars3 also includes var3
+                other_vars3 = set(considered_dataset[np.where((considered_dataset[:, 2] == target) & (considered_dataset[:,1]==rel3))][:,0])
+                removed_vars3 = []
+                for other_var3 in other_vars3:
+                    if (other_var3, rel3) not in to_skip['rhs']:
+                        removed_vars3.append(other_var3)
+                other_vars3 = other_vars3.difference(set(removed_vars3))
+                vars3 = [var3] + list(other_vars3)
+
+                all_targets_hard = set(considered_dataset[np.where((considered_dataset[:, 0] == var3) & (considered_dataset[:,1]==rel3))][:,2])
+                all_targets_complete = set(to_skip['rhs'][(var3, rel3)])
+
+
+
+                for other_var3 in other_vars3:
+                    all_targets_hard = all_targets_hard.intersection(set(considered_dataset[np.where((considered_dataset[:, 0] == other_var3) & (considered_dataset[:,1]==rel3))][:,2]))
+                    all_targets_complete = all_targets_complete.intersection(set(to_skip['rhs'][(other_var3, rel3)]))
+
+                if len(all_targets_hard) < 1 or len(all_targets_complete) < 1:
+                    continue
+                all_targets_hard = list(all_targets_hard)
+                all_targets_complete = list(all_targets_complete)
+
+                # going from each variable to extract two anchors
+                for variable in vars3[:1]:
+                    neighbour_rels = list(set(all_data[np.where((all_data[:,2]==variable))][:,1]))
+                    if len(neighbour_rels) < 2:
+                        continue
+                    if len(neighbour_rels) > 4:
+                        neighbour_rels = neighbour_rels[:3]
+                    #rel_pairs = list(combinations_with_replacement(neighbour_rels, 2))
+                    rel_pairs = list(combinations(neighbour_rels, 2))
+                    for rel_pair in rel_pairs:
+                        rel1, rel2 = rel_pair
+                        anchors1 = list(set(all_data[np.where((all_data[:,2]==variable) & (all_data[:,1]==rel1))][:,0]))[:3]
+                        anchors2 = list(set(all_data[np.where((all_data[:,2]==variable) & (all_data[:,1]==rel2))][:,0]))[:3]
+                        if len(anchors1)<3 or len(anchors2)<3:
+                            continue
+
+                        if hardness == 'hard':
+                            new_raw_chain = [ [anchors1[0], rel1, -1 ], [anchors2[0], rel2, -1], [-1, rel3,  all_targets_hard], 
+                                            [anchors1[1], rel1, -1 ], [anchors2[1], rel2, -1], [-1, rel3,  all_targets_hard],
+                                            [anchors1[2], rel1, -1 ], [anchors2[2], rel2, -1], [-1, rel3,  all_targets_hard]]
+
+                        elif hardness == 'complete':
+                            new_raw_chain = [ [anchors1[0], rel1, -1 ], [anchors2[0], rel2, -1], [-1, rel3,  all_targets_complete], 
+                                            [anchors1[1], rel1, -1 ], [anchors2[1], rel2, -1], [-1, rel3,  all_targets_complete],
+                                            [anchors1[2], rel1, -1 ], [anchors2[2], rel2, -1], [-1, rel3,  all_targets_complete]]            
+                        used_targets.append(target)
+                        new_chain = Chain()
+                        new_chain.data['type'] = '4chain3_disj'
+                        new_chain.data['raw_chain'] = new_raw_chain
+                        new_chain.data['anchors'].append(new_raw_chain[0][0])
+                        new_chain.data['anchors'].append(new_raw_chain[1][0])
+                        new_chain.data['anchors'].append(new_raw_chain[3][0])
+                        new_chain.data['anchors'].append(new_raw_chain[4][0])
+                        new_chain.data['anchors'].append(new_raw_chain[6][0])
+                        new_chain.data['anchors'].append(new_raw_chain[7][0])
+                        new_chain.data['optimisable'].append(new_raw_chain[0][2])
+                        new_chain.data['optimisable'].append(new_raw_chain[2][2])
+                        new_chain.data['optimisable'].append(new_raw_chain[3][2])
+                        new_chain.data['optimisable'].append(new_raw_chain[5][2])
+                        extended_chain.type4_3chain_u.append(new_chain)
+
+
 
 
         if chain_type == '3_3':

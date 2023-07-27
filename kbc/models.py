@@ -2525,7 +2525,7 @@ class KBCModel(nn.Module, ABC):
                     ent_scores = self.forward_emb(target_emb, rel_virtual)
                     scores[seq][i] = ent_scores.view(-1)
 
-        elif env.graph_type == '2_2_seq':
+        elif env.graph_type == '2_2_seq' or env.graph_type == '2_2_disj_seq':
             
             gt_targets = env.target_ids_hard
             chains = env.chains
@@ -2547,6 +2547,30 @@ class KBCModel(nn.Module, ABC):
                     rel_virtual = torch.ones_like(target_emb)
                     ent_scores = self.forward_emb(target_emb, rel_virtual)
                     scores[seq][i] = ent_scores.view(-1)
+        # elif env.graph_type == '2_2_disj_seq':
+        #     gt_targets = env.target_ids_hard
+        #     chains = env.chains
+        #     chain1 , chain2, chain3, chain4, chain5, chain6 = chains
+        #     nb_queries, embedding_size = chains[0][0].shape[0], chains[0][0].shape[1]
+        #     seq_chains = [[chain1, chain2], [chain3, chain4], [chain5, chain6]]
+        #     scores = torch.zeros((3, nb_queries, self.sizes[0])).to(chains[0][0].device)
+        #     for i in tqdm.tqdm(range(nb_queries)):
+        #         gts = list(gt_targets.values())[i]
+        #         for seq in range(3):
+        #             if seq==0:
+        #                 target_emb = torch.zeros((1, embedding_size)).to(chains[0][0].device)
+        #             chain1_seq, chain2_seq = seq_chains[seq]
+        #             evidence1 = chain1_seq[0][i].view(1,-1) * chain1_seq[1][i].view(1,-1)
+        #             evidence2 = chain2_seq[0][i].view(1,-1) * chain2_seq[1][i].view(1,-1)
+        #             target_emb1 = (1 /(cov_anchor + cov_target)) * ((cov_anchor)*target_emb + (cov_target)*evidence1)
+        #             target_emb2 = (1 /(cov_anchor + cov_target)) * ((cov_anchor)*target_emb + (cov_target)*evidence2)
+        #             cov_target = (cov_target * cov_anchor) /(cov_anchor + 2* cov_target)
+        #             rel_virtual = torch.ones_like(target_emb)
+        #             ent_scores1 = self.forward_emb(target_emb1, rel_virtual)
+        #             ent_scores2 = self.forward_emb(target_emb2, rel_virtual)
+        #             scores[seq][i] = (0.5 * ent_scores1 + 0.5*ent_scores2)
+
+
 
         elif env.graph_type == '2_3_seq':
             gt_targets = env.target_ids_hard
@@ -2635,6 +2659,34 @@ class KBCModel(nn.Module, ABC):
                     rel_virtual = torch.ones_like(target_emb)
                     ent_scores = self.forward_emb(target_emb, rel_virtual)
                     scores[seq][i] = ent_scores.view(-1)
+        elif env.graph_type == '4_3_disj_seq':
+            gt_targets = env.target_ids_hard
+            chains = env.chains
+            new_env = copy.deepcopy(env)
+            new_env.chain_instructions = ['intersect_0_1']
+            new_env.graph_type = '2_2_disj'
+            chain1 , chain2, chain3, chain4, chain5, chain6, chain7, chain8, chain9 = chains
+            nb_queries, embedding_size = chains[0][0].shape[0], chains[0][0].shape[1]
+            seq_chains = [[chain1, chain2, chain3], [chain4, chain5, chain6], [chain7, chain8, chain9]]
+            scores = torch.zeros((3, nb_queries, self.sizes[0])).to(chains[0][0].device)
+            for i in tqdm.tqdm(range(nb_queries)):
+                gts = list(gt_targets.values())[i]
+                for seq in range(3):
+                    if seq == 0:
+                        target_emb = torch.zeros((1, embedding_size)).to(chains[0][0].device)
+                    chain1_seq, chain2_seq, chain3_seq = seq_chains[seq]
+                    new_env.chains = [(chain1_seq[0][i].view(1,-1), chain1_seq[1][i].view(1,-1), chain1_seq[2]), (chain2_seq[0][i].view(1,-1), chain2_seq[1][i].view(1,-1), chain2_seq[2])]
+                    scores_var = self.query_answering_BF(new_env, candidates=candidates, t_norm=t_norm, batch_size=batch_size, scores_normalize=scores_normalize, explain=explain)
+                    _, top_var_indices = torch.topk(scores_var, candidates, dim=1)
+                    top_var_embeddings = self.entity_embeddings(top_var_indices[0])
+                    evidence_mean = (torch.mean(top_var_embeddings, dim=0).view(1, embedding_size)) * (chain3_seq[1][i].view(1, embedding_size))
+                    target_emb = (1 /(cov_anchor + candidates * cov_target)) * ((cov_anchor)*target_emb + (candidates * cov_target)*evidence_mean)
+                    cov_target = (cov_target * cov_anchor) /(cov_anchor + candidates * cov_target)
+                    rel_virtual = torch.ones_like(target_emb)
+                    ent_scores = self.forward_emb(target_emb, rel_virtual)
+                    scores[seq][i] = ent_scores.view(-1)
+
+
 
                     
 
@@ -2771,8 +2823,13 @@ class KBCModel(nn.Module, ABC):
 
         if len(chain_instructions) == 6 and chain_instructions[0] == 'hop_0_1':
             chain_instructions = ['hop_0_1', 'intersect_1_2', 'hop_3_4', 'intersect_4_5', 'hop_6_7', 'intersect_7_8']
+        # this is for both 4_3 and 4_3_seq
         elif len(chain_instructions) == 7 and chain_instructions[0] == 'intersect_0_1':
             chain_instructions = ['intersect_0_1', 'hop_1_2', 'intersect_3_4', 'hop_4_5', 'intersect_6_7', 'hop_7_8']
+        
+        if env.graph_type == '2_2_disj_seq':
+            chain_instructions = ['intersect_0_1', 'intersect_2_3', 'intersect_4_5']
+
         
         # chain_instructions = ['hop_0_1']
         # chains = [part1, part2]
@@ -2791,8 +2848,8 @@ class KBCModel(nn.Module, ABC):
 
         # batches = [(0,1), (1,2), (2,3), ...]
 
-        for i, batch in enumerate(tqdm.tqdm(batches)):
-        #for i, batch in enumerate(batches):
+        #for i, batch in enumerate(tqdm.tqdm(batches)):
+        for i, batch in enumerate(batches):
             nb_branches = 1
             nb_ent = 0
             batch_scores = None
@@ -2957,6 +3014,8 @@ class KBCModel(nn.Module, ABC):
                                 last_step = (inst_ind == len(chain_instructions)-1) or inst_ind % 2 == 1
                             else:
                                 last_step = (inst_ind == len(chain_instructions)-1)
+                            if env.graph_type == '2_2_disj_seq':
+                                last_step = True
 
                             
                             lhs, rel, rhs = chains[ind]
@@ -2990,7 +3049,15 @@ class KBCModel(nn.Module, ABC):
 
                                 batch_scores = z_scores_1d if batch_scores is None else objective(
                                     z_scores_1d, batch_scores, t_norm)
-
+                                if ind == indices[-1] and env.graph_type == '2_2_disj_seq':
+                                    if inst_ind == 0:
+                                        seq_scores = 1 * batch_scores
+                                    else:
+                                        seq_scores = seq_scores * batch_scores
+                                    if ind == 5:
+                                        batch_scores = seq_scores
+                                    else:
+                                        batch_scores = None
                                 continue
 
                             if f"rhs_{ind}" not in candidate_cache or last_step or last_step_seq:
@@ -3090,7 +3157,7 @@ class KBCModel(nn.Module, ABC):
             if batch_scores is not None:
                 # [B * entites * S ]
                 # S ==  K**(V-1)
-                if len(chain_instructions) == 6:
+                if len(chain_instructions) == 6 or env.graph_type == '2_2_disj_seq':
                     #batch_scores = seq_scores[0] * seq_scores[1] * seq_scores[2]
                     batch_scores = seq_scores
 
@@ -3633,7 +3700,7 @@ class ComplEx(KBCModel):
 
         return (lhs, rel, rhs)
 
-    def get_queries(self, queries: torch.Tensor):
+    def get_queries(self, queries: torch.Tensor, side: str = 'rhs'):
         lhs = self.embeddings[0](queries[:, 0])
         rel = self.embeddings[1](queries[:, 1])
         lhs = lhs[:, :self.rank], lhs[:, self.rank:]
@@ -3747,7 +3814,7 @@ class DistMult(KBCModel):
 
         return (lhs, rel, rhs)
 
-    def get_queries(self, queries: torch.Tensor):
+    def get_queries(self, queries: torch.Tensor, side: str = 'rhs'):
         lhs = self.embeddings[0](queries[:, 0])
         rel = self.embeddings[1](queries[:, 1])
 
