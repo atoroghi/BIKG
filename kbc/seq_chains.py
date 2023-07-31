@@ -451,6 +451,14 @@ if __name__ == "__main__":
                             continue
                         
                         anchors1 = other_anchs1
+                        # we need to add other targets found by using the anchors from other side since this is disjunctive
+                        targets_anchors2 = []
+                        for anch2 in anchors2:
+                            if (anch2, rel2) in to_skip['rhs']:
+                                targets_anch2 = list(set(to_skip['rhs'][(anch2, rel2)]))
+                                targets_anchors2 = targets_anchors2 + targets_anch2
+                        all_targets_hard = all_targets_hard + targets_anchors2
+                        all_targets_complete = all_targets_complete + targets_anchors2
                         if hardness == 'hard':
                             new_raw_chain = [ [anchors1[0], rel1, all_targets_hard], [anchors2[0], rel2, all_targets_hard],
                              [anchors1[1], rel1, all_targets_hard], [anchors2[1], rel2, all_targets_hard],

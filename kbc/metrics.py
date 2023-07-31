@@ -31,7 +31,7 @@ def evaluation(scores_all, queries, test_ans, test_ans_hard, seq):
             ans_list = list(ans)
             hard_ans_list = list(hard_ans)
             false_ans_list = list(false_ans)
-            ans_idxs = np.array(hard_ans_list)
+            ans_idxs = np.array(hard_ans_list).astype(int)
             vals = np.zeros((len(ans_idxs), nentity))
 
             vals[np.arange(len(ans_idxs)), ans_idxs] = 1

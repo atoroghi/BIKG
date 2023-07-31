@@ -2452,7 +2452,30 @@ class KBCModel(nn.Module, ABC):
 
     def query_answering_Bayesian1(self, env: DynKBCSingleton, candidates: int = 5, t_norm: str = 'min', batch_size=1, scores_normalize=0, explain=False,
     cov_anchor=None, cov_var=None, cov_target=None):
-        
+        if env.graph_type == '1_1_seq':
+            last_step = False
+            gt_targets = env.target_ids_hard
+            chains = env.chains
+            chain1, chain2, chain3 = chains
+            seq_chains = [chain1, chain2, chain3]
+            nb_queries, embedding_size = chains[0][0].shape[0], chains[0][0].shape[1]
+            scores = torch.empty((3, nb_queries, self.sizes[0])).to(chains[0][0].device)
+            for i in tqdm.tqdm(range(nb_queries)):
+                gts = list(gt_targets.values())[i]  
+                for seq in range(3):
+                    if seq == 0:
+                        target_emb = torch.zeros((1, embedding_size)).to(chains[0][0].device)
+                    chain = seq_chains[seq]
+                    lhs, rel, rhs = chain
+                    lhs = lhs[i].view(-1, embedding_size)
+                    rel = rel[i].view(-1, embedding_size)
+                    evidence_mean = lhs * rel
+                    target_emb = (1 /(cov_anchor + 1 * cov_target)) * ((cov_anchor)*target_emb + (1 * cov_target)*evidence_mean)
+                    cov_target = (cov_target * cov_anchor) /(cov_anchor + 1 * cov_target)
+                    rel_virtual = torch.ones_like(target_emb)
+                    ent_scores = self.forward_emb(target_emb, rel_virtual)
+                    scores[seq][i] = ent_scores.view(-1)
+
         if env.graph_type == '1_2_seq':
             last_step = False
             gt_targets = env.target_ids_hard
@@ -2848,8 +2871,8 @@ class KBCModel(nn.Module, ABC):
 
         # batches = [(0,1), (1,2), (2,3), ...]
 
-        #for i, batch in enumerate(tqdm.tqdm(batches)):
-        for i, batch in enumerate(batches):
+        for i, batch in enumerate(tqdm.tqdm(batches)):
+        #for i, batch in enumerate(batches):
             nb_branches = 1
             nb_ent = 0
             batch_scores = None
