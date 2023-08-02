@@ -58,7 +58,7 @@ if __name__ == "__main__":
     extended_chain = ChaineDataset(Dataset(osp.join('data',args.dataset,'kbc_data')),5000)
     #extended_chain..set_attr(type1_2chain=chain1_2)
     chain_types = ['1_1' ,'1_2', '1_3', '2_2', '2_3', '3_3', '4_3', '2_2_disj', '4_3_disj']
-    #chain_types = ['4_3']
+    #chain_types = ['2_2_disj']
     #data_name = str(args.dataset) + '_'+ mode +'_' +'hard_seq'
     data_name = str(args.dataset) + '_'+ mode +'_' +f'{hardness}_seq'
 
@@ -441,6 +441,7 @@ if __name__ == "__main__":
                     continue
                 all_targets_hard = list(all_targets_hard)
                 all_targets_complete = list(all_targets_complete)
+                break_flag = False
 
                 for target in all_targets_hard:
                     neighbour_rels = list(set(all_data[np.where((all_data[:,2]==target))][:,1]))
@@ -459,6 +460,10 @@ if __name__ == "__main__":
                                 targets_anchors2 = targets_anchors2 + targets_anch2
                         all_targets_hard = all_targets_hard + targets_anchors2
                         all_targets_complete = all_targets_complete + targets_anchors2
+                        if len(all_targets_hard) > 50 or len(all_targets_complete) > 50:
+                            break_flag = True
+                            break
+                        
                         if hardness == 'hard':
                             new_raw_chain = [ [anchors1[0], rel1, all_targets_hard], [anchors2[0], rel2, all_targets_hard],
                              [anchors1[1], rel1, all_targets_hard], [anchors2[1], rel2, all_targets_hard],
@@ -479,6 +484,10 @@ if __name__ == "__main__":
                         new_chain.data['anchors'].append(new_raw_chain[5][0])
                         new_chain.data['optimisable'].append(new_raw_chain[0][2])
                         extended_chain.type2_2chain_u.append(new_chain)
+                    if break_flag == True:
+                        break
+                if break_flag == True:
+                    continue
 
         if chain_type == '4_3':
             # raw chain for original 4_3: [[62, 51, -1], [2388, 30, -1], [-1, 381, [9009, 13493, 11703]]]
@@ -601,6 +610,8 @@ if __name__ == "__main__":
                     continue
                 all_targets_hard = list(all_targets_hard)
                 all_targets_complete = list(all_targets_complete)
+                if len(all_targets_hard) > 50 or len(all_targets_complete) > 50:
+                    continue
 
                 # going from each variable to extract two anchors
                 for variable in vars3[:1]:

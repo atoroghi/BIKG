@@ -1213,12 +1213,16 @@ class KBCModel(nn.Module, ABC):
             return torch.min(tens_1, tens_2)
         elif 'prod' in t_norm:
             return tens_1 * tens_2
+        elif 'luk' in t_norm:
+            return torch.max(tens_1 + tens_2 - 1, torch.zeros_like(tens_1))
 
     def t_conorm(self, tens_1: Tensor, tens_2: Tensor, t_conorm: str = 'max') -> Tensor:
         if 'min' in t_conorm:
             return torch.max(tens_1, tens_2)
         elif 'prod' in t_conorm:
             return (tens_1+tens_2) - (tens_1 * tens_2)
+        elif 'luk' in t_conorm:
+            return torch.min(tens_1 + tens_2, torch.ones_like(tens_1))
 
     def min_max_rescale(self, x):
         return (x-torch.min(x))/(torch.max(x) - torch.min(x))
@@ -2843,15 +2847,22 @@ class KBCModel(nn.Module, ABC):
             objective = self.t_norm
 
         chains, chain_instructions = env.chains, env.chain_instructions
-
+        #chain_instructions = ['intersect_0_1','hop_1_3','hop_3_4']
+        #chain_instructions = ['intersect_0_1_2_3_4_5']
+        #chain_instructions = ['intersect_0_1','hop_1_3']
+        chain_instructions = ['hop_0_3', 'hop_3_4']
+        # this is for 3_3
         if len(chain_instructions) == 6 and chain_instructions[0] == 'hop_0_1':
             chain_instructions = ['hop_0_1', 'intersect_1_2', 'hop_3_4', 'intersect_4_5', 'hop_6_7', 'intersect_7_8']
         # this is for both 4_3 and 4_3_seq
         elif len(chain_instructions) == 7 and chain_instructions[0] == 'intersect_0_1':
             chain_instructions = ['intersect_0_1', 'hop_1_2', 'intersect_3_4', 'hop_4_5', 'intersect_6_7', 'hop_7_8']
-        
+            #chain_instructions = ['intersect_0_1', 'hop_1_2', 'intersect_3_4', 'hop_4_5']
+            #chain_instructions = ['intersect_0_1', 'hop_1_2']
         if env.graph_type == '2_2_disj_seq':
             chain_instructions = ['intersect_0_1', 'intersect_2_3', 'intersect_4_5']
+            #chain_instructions = ['intersect_0_1', 'intersect_2_3']
+            #chain_instructions = ['intersect_0_1']
 
         
         # chain_instructions = ['hop_0_1']
@@ -2927,6 +2938,8 @@ class KBCModel(nn.Module, ABC):
                                 lhs = lhs[batch[0]:batch[1]]
 
                             else:
+                                # TODO: remove this
+                                #candidate_cache['lhs_3'] = candidate_cache['lhs_2']
                                 batch_scores, lhs_3d = candidate_cache[f"lhs_{ind}"]
                                 lhs = lhs_3d.view(-1, embedding_size)
 
@@ -2989,7 +3002,8 @@ class KBCModel(nn.Module, ABC):
                                 if inst_ind == 1:
                                     seq_scores = 1 * batch_scores
                                 else:
-                                    seq_scores = seq_scores * batch_scores
+                                    #seq_scores = seq_scores * batch_scores
+                                    seq_scores = self.t_norm(seq_scores, batch_scores, t_norm)
                                 # TODO: resetting these params. Maybe do the same for 3_3
 
                                 if ind != 8:
@@ -3001,10 +3015,14 @@ class KBCModel(nn.Module, ABC):
                             # #torch.cuda.empty_cache()
 
                     elif 'inter' in inst:
-                        ind_1 = int(inst.split("_")[-2])
-                        ind_2 = int(inst.split("_")[-1])
+                        if len(inst.split("_")) < 3:
+                            ind_1 = int(inst.split("_")[-1])
+                            indices = [ind_1]
+                        else:
+                            ind_1 = int(inst.split("_")[-2])
+                            ind_2 = int(inst.split("_")[-1])
 
-                        indices = [ind_1, ind_2]
+                            indices = [ind_1, ind_2]
 
                         if objective == self.t_norm and dnf_flag:
                             objective = self.t_conorm
@@ -3076,7 +3094,8 @@ class KBCModel(nn.Module, ABC):
                                     if inst_ind == 0:
                                         seq_scores = 1 * batch_scores
                                     else:
-                                        seq_scores = seq_scores * batch_scores
+                                        seq_scores = self.t_norm(seq_scores, batch_scores, t_norm)
+                                        #seq_scores = seq_scores * batch_scores
                                     if ind == 5:
                                         batch_scores = seq_scores
                                     else:
@@ -3146,14 +3165,13 @@ class KBCModel(nn.Module, ABC):
                                     candidate_cache[f"lhs_{ind+1}"] = (batch_scores, rhs_3d)
                                 
                                 if ind == indices[-1] and len(chain_instructions) == 6 and chain_instructions[0] == 'hop_0_1':
-                                    #seq_scores.append(batch_scores)
-                                    #seq_rhs_3d.append(rhs_3d)
+
                                     if inst_ind == 1:
                                         seq_scores = 1 * batch_scores
                                     else:
-                                        seq_scores = seq_scores * batch_scores
+                                        #seq_scores = seq_scores * batch_scores
+                                        seq_scores = self.t_norm(seq_scores, batch_scores, t_norm)
                                     if ind == 8:
-                                        #batch_scores = seq_scores[2]
                                         batch_scores = seq_scores
                             else:
                                 
@@ -3177,6 +3195,8 @@ class KBCModel(nn.Module, ABC):
                             #     sys.exit()
                             del lhs, rel, rhs, rhs_3d, z_scores_1d, z_scores
 
+            # TODO: remove this
+            #batch_scores = seq_scores
             if batch_scores is not None:
                 # [B * entites * S ]
                 # S ==  K**(V-1)
