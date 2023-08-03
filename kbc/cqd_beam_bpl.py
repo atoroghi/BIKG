@@ -23,9 +23,12 @@ def run(kbc_path, dataset_hard, dataset_name, t_norm='min', candidates=3,
  scores_normalize=0, kg_path=None, explain=False, user_likes =None,user_likes_train=None, ent_id =None,
   quantifier=None, valid_heads=None, valid_tails=None, non_items_array=None, 
   cov_anchor=None, cov_var=None, cov_target=None, chain_type=None):
+  
     chain_type_experiments = {'1_1': QuerDAG.TYPE1_1.value, '1_2': QuerDAG.TYPE1_2.value, '1_3': QuerDAG.TYPE1_3.value,
     '2_2':QuerDAG.TYPE2_2.value, '2_2_disj': QuerDAG.TYPE2_2_disj.value, '1_4': QuerDAG.TYPE1_4.value, '2_3': QuerDAG.TYPE2_3.value
-    , '3_3': QuerDAG.TYPE3_3.value, '4_3': QuerDAG.TYPE4_3.value, '4_3_disj':QuerDAG.TYPE4_3_disj.value, '1_3_joint': QuerDAG.TYPE1_3_joint.value}
+    , '3_3': QuerDAG.TYPE3_3.value, '4_3': QuerDAG.TYPE4_3.value, '4_3_disj':QuerDAG.TYPE4_3_disj.value, '1_3_joint': QuerDAG.TYPE1_3_joint.value,
+    '1_2_seq': QuerDAG.TYPE1_2_seq.value, '1_3_seq': QuerDAG.TYPE1_3_seq.value, '2_2_seq': QuerDAG.TYPE2_2_seq.value, '2_3_seq': QuerDAG.TYPE2_3_seq.value,
+    '3_3_seq': QuerDAG.TYPE3_3_seq.value, '4_3_seq': QuerDAG.TYPE4_3_seq.value, '1_1_seq': QuerDAG.TYPE1_1_seq.value, '2_2_disj_seq': QuerDAG.TYPE2_2_disj_seq.value,'4_3_disj_seq': QuerDAG.TYPE4_3_disj_seq.value}
     experiments = [t.value for t in QuerDAG]
     
     for key in chain_type_experiments.keys():

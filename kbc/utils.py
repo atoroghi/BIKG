@@ -502,8 +502,8 @@ def preload_env(kbc_path, dataset, graph_type, mode="complete", kg_path=None,
                 # masks the target node (head of the second part of the chain) with some code so that it is not used in the embedding
                 # but part 1 remains the same
                 flattened_part2.append([-(chain_iter+1234) ,part2[chain_iter][1], part2[chain_iter][2][0]])
-                #flattened_part1.append([part1[chain_iter][0], part1[chain_iter][1], -(chain_iter+1234)])
-                flattened_part1.append([-(chain_iter+1234) , -(chain_iter+1234), -(chain_iter+1234)])
+                flattened_part1.append([part1[chain_iter][0], part1[chain_iter][1], -(chain_iter+1234)])
+                #flattened_part1.append([-(chain_iter+1234) , -(chain_iter+1234), -(chain_iter+1234)])
                 # let's consider the item node as the target node for now
                 items.append(part1[chain_iter][2])
                 users.append(part1[chain_iter][0])
