@@ -1593,17 +1593,17 @@ class KBCModel(nn.Module, ABC):
 
                         #Marginal
 
-                        # h_m2_for = h_m2_for + rel_3[:emb_dim//2] * (1 / J_m3_inv) * h_m3_inv
-                        # J_m2_for = (1/cov_var) + rel_3[:emb_dim//2] * (1 / J_m3_inv) * rel_3[:emb_dim//2]
-                        # h_m2_inv = h_m2_inv + rel_3[emb_dim//2:] * (1 / J_m3_for) * h_m3_for
-                        # J_m2_inv = (1/cov_var) + rel_3[emb_dim//2:] * (1 / J_m3_for) * rel_3[emb_dim//2:]
-                        # mu_m2_for = h_m2_for / J_m2_for; mu_m2_inv = h_m2_inv / J_m2_inv
+                        h_m2_for = h_m2_for + rel_3[:emb_dim//2] * (1 / J_m3_inv) * h_m3_inv
+                        J_m2_for = (1/cov_var) + rel_3[:emb_dim//2] * (1 / J_m3_inv) * rel_3[:emb_dim//2]
+                        h_m2_inv = h_m2_inv + rel_3[emb_dim//2:] * (1 / J_m3_for) * h_m3_for
+                        J_m2_inv = (1/cov_var) + rel_3[emb_dim//2:] * (1 / J_m3_for) * rel_3[emb_dim//2:]
+                        mu_m2_for = h_m2_for / J_m2_for; mu_m2_inv = h_m2_inv / J_m2_inv
 
                         #Conditional
 
-                        h_m2_for = h_m2_for + h_m3_inv; h_m2_inv = h_m2_inv + h_m3_for
-                        J_m2_for = (1/cov_var) + J_m3_inv; J_m2_inv = (1/cov_var) + J_m3_for
-                        mu_m2_for = h_m2_for / J_m2_for; mu_m2_inv = h_m2_inv / J_m2_inv
+                        # h_m2_for = h_m2_for + h_m3_inv; h_m2_inv = h_m2_inv + h_m3_for
+                        # J_m2_for = (1/cov_var) + J_m3_inv; J_m2_inv = (1/cov_var) + J_m3_for
+                        # mu_m2_for = h_m2_for / J_m2_for; mu_m2_inv = h_m2_inv / J_m2_inv
 
                         mu_m1_for = possible_tails_emb[0][i*5+j, :emb_dim//2]
                         h_m1_for = (1/cov_var) * mu_m1_for
@@ -2036,22 +2036,35 @@ class KBCModel(nn.Module, ABC):
                 for j in range(5):
                     lhs_1, rel_1, rhs_1 = lhs_1_emb[i*5+j], rel_1_emb[i*5+j], None
                     #instantiated_ents = torch.topk(scores[i*5+j], instantiations).indices
-                    instantiated_ents = torch.topk(scores[i*5+j], candidates).indices
+                    instantiated_ents = torch.topk(scores[i*5+j], instantiations).indices
                         
                     if j == 0:
                         user_belief = lhs_1
                         J_u_for = 1/cov_target
                         J_u_inv = 1/cov_target
-                    for ent in instantiated_ents:
+                    rhs = torch.empty((instantiations, emb_dim), device=Device)
+                    # for ent in instantiated_ents:
+                    #     rhs_1 = self.entity_embeddings(ent)
+                    #     h_m_for = (1/cov_var) * rhs_1[:emb_dim//2] * rel_1[emb_dim//2:]
+                    #     h_m_inv = (1/cov_var) * rhs_1[emb_dim//2:] * rel_1[:emb_dim//2]
+                    #     h_u_for = J_u_for * user_belief[:emb_dim//2] + h_m_inv
+                    #     h_u_inv = J_u_inv * user_belief[emb_dim//2:] + h_m_for
+                    #     J_u_for = J_u_for + (1/cov_var) 
+                    #     J_u_inv = J_u_inv + (1/cov_var)
+                    #     mu_u_for = h_u_for / J_u_for
+                    #     mu_u_inv = h_u_inv / J_u_inv
+                    for k, ent in enumerate(instantiated_ents):
                         rhs_1 = self.entity_embeddings(ent)
-                        h_m_for = (1/cov_var) * rhs_1[:emb_dim//2] * rel_1[emb_dim//2:]
-                        h_m_inv = (1/cov_var) * rhs_1[emb_dim//2:] * rel_1[:emb_dim//2]
-                        h_u_for = J_u_for * user_belief[:emb_dim//2] + h_m_inv
-                        h_u_inv = J_u_inv * user_belief[emb_dim//2:] + h_m_for
-                        J_u_for = J_u_for + (1/cov_var) 
-                        J_u_inv = J_u_inv + (1/cov_var)
-                        mu_u_for = h_u_for / J_u_for
-                        mu_u_inv = h_u_inv / J_u_inv
+                        rhs[k] = rhs_1
+                    rhs_1 = rhs.mean(dim=0)
+                    h_m_for = (1/cov_var) * rhs_1[:emb_dim//2] * rel_1[emb_dim//2:]
+                    h_m_inv = (1/cov_var) * rhs_1[emb_dim//2:] * rel_1[:emb_dim//2]
+                    h_u_for = J_u_for * user_belief[:emb_dim//2] + h_m_inv
+                    h_u_inv = J_u_inv * user_belief[emb_dim//2:] + h_m_for
+                    J_u_for = J_u_for + (1/cov_var)
+                    J_u_inv = J_u_inv + (1/cov_var)
+                    mu_u_for = h_u_for / J_u_for
+                    mu_u_inv = h_u_inv / J_u_inv
                         
                     user_embs[i*5+j, :emb_dim//2] = mu_u_for
                     user_embs[i*5+j, emb_dim//2:] = mu_u_inv
