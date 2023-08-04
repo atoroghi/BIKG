@@ -1684,8 +1684,8 @@ class KBCModel(nn.Module, ABC):
                         #h_d_for2 = (1/cov_anchor) * mu_d_for2
                         mu_d_inv2 = rhs_3[emb_dim//2:] * rel_3[:emb_dim//2]
                         #h_d_inv2 = (1/cov_anchor) * mu_d_inv2
-                        mu_d_for = mu_d_for1 + mu_d_for2
-                        mu_d_inv = mu_d_inv1 + mu_d_inv2
+                        mu_d_for = (mu_d_for1 + mu_d_for2 ) / 2
+                        mu_d_inv = (mu_d_inv1 + mu_d_inv2) / 2
                         h_d_for = (1/cov_anchor) * mu_d_for
                         h_d_inv = (1/cov_anchor) * mu_d_inv
                         # print("dist between mu_d and mu_m")
@@ -1717,16 +1717,20 @@ class KBCModel(nn.Module, ABC):
                             h_u_inv = (1/cov_target) * mu_u_inv
                             J_u_for = (1/cov_target)
                             J_u_inv = (1/cov_target)
+                        
+                        # marginal
 
-                        # h_u_for = h_u_for - rel_1[:emb_dim//2] * (1 / J_m_inv) * h_m_inv
-                        # J_u_for = J_u_for - rel_1[:emb_dim//2] * (1 / J_m_inv) * rel_1[:emb_dim//2]
-                        # h_u_inv = h_u_inv - rel_1[emb_dim//2:] * (1 / J_m_for) * h_m_for
-                        # J_u_inv = J_u_inv - rel_1[emb_dim//2:] * (1 / J_m_for) * rel_1[emb_dim//2:]
+                        h_u_for = h_u_for + rel_1[:emb_dim//2] * (1 / J_m_inv) * h_m_inv
+                        J_u_for = J_u_for + rel_1[:emb_dim//2] * (1 / J_m_inv) * rel_1[:emb_dim//2]
+                        h_u_inv = h_u_inv + rel_1[emb_dim//2:] * (1 / J_m_for) * h_m_for
+                        J_u_inv = J_u_inv + rel_1[emb_dim//2:] * (1 / J_m_for) * rel_1[emb_dim//2:]
+
+                        # conditional
 
                         # h_u_for = h_u_for + h_m_inv; h_u_inv = h_u_inv + h_m_for
                         # J_u_for = J_u_for + (1/cov_var); J_u_inv = J_u_inv + (1/cov_var)
-                        # mu_u_for = h_u_for / J_u_for
-                        # mu_u_inv = h_u_inv / J_u_inv
+                        mu_u_for = h_u_for / J_u_for
+                        mu_u_inv = h_u_inv / J_u_inv
 
 
 
@@ -1746,10 +1750,6 @@ class KBCModel(nn.Module, ABC):
             else:
                 for i in tqdm.tqdm(range(nb_queries // 5)):
                     for j in range(5):
-                        #print(intact_parts[0][i*5+j])
-                        #print(intact_parts[1][i*5+j])
-                        #print(intact_parts[2][i*5+j])
-                        #print(intact_parts[3][i*5+j])
     
                         # lhs_1 is the user belief. rhs_2, rhs_3, and rhs_4 are the evidence embeddings
                         lhs_1, rel_1, rhs_1 = lhs_1_emb[i*5+j], rel_1_emb[i*5+j], None
@@ -1778,10 +1778,10 @@ class KBCModel(nn.Module, ABC):
                         mu_d_inv3 = rhs_4[emb_dim//2:] * rel_4[:emb_dim//2]
                         h_d_inv3 = (1/cov_anchor) * mu_d_inv3
 
-                        h_m_for = h_m_for + h_d_inv1 + h_d_inv2 + h_d_inv3
+                        h_m_for = h_m_for + (h_d_inv1 + h_d_inv2 + h_d_inv3)/3
 
                         J_m_for = (1/cov_var) + (1/cov_anchor) + (1/cov_anchor) + (1/cov_anchor)
-                        h_m_inv = h_m_inv + h_d_for1 + h_d_for2 + h_d_for3
+                        h_m_inv = h_m_inv + (h_d_for1 + h_d_for2 + h_d_for3)/3
                         J_m_inv = (1/cov_var) + (1/cov_anchor) + (1/cov_anchor) + (1/cov_anchor)
                         mu_m_for = h_m_for / J_m_for
                         mu_m_inv = h_m_inv / J_m_inv
@@ -1796,11 +1796,11 @@ class KBCModel(nn.Module, ABC):
                             J_u_for = (1/cov_target)
                             J_u_inv = (1/cov_target)
 
-                        h_u_for = h_u_for - rel_1[:emb_dim//2] * (1 / J_m_inv) * h_m_inv
+                        h_u_for = h_u_for + rel_1[:emb_dim//2] * (1 / J_m_inv) * h_m_inv
 
-                        J_u_for = J_u_for - rel_1[:emb_dim//2] * (1 / J_m_inv) * rel_1[:emb_dim//2]
-                        h_u_inv = h_u_inv - rel_1[emb_dim//2:] * (1 / J_m_for) * h_m_for
-                        J_u_inv = J_u_inv - rel_1[emb_dim//2:] * (1 / J_m_for) * rel_1[emb_dim//2:]
+                        J_u_for = J_u_for + rel_1[:emb_dim//2] * (1 / J_m_inv) * rel_1[:emb_dim//2]
+                        h_u_inv = h_u_inv + rel_1[emb_dim//2:] * (1 / J_m_for) * h_m_for
+                        J_u_inv = J_u_inv + rel_1[emb_dim//2:] * (1 / J_m_for) * rel_1[emb_dim//2:]
                         # h_u_for = h_u_for + h_m_inv; h_u_inv = h_u_inv + h_m_for
                         # J_u_for = J_u_for + (1/cov_var); J_u_inv = J_u_inv + (1/cov_var)
                         mu_u_for = h_u_for / J_u_for
@@ -1843,10 +1843,12 @@ class KBCModel(nn.Module, ABC):
                         h_m1_for = (1/cov_var) * mu_m1_for
                         mu_m1_inv = possible_tails_emb[0][i*5+j, emb_dim//2:]
                         h_m1_inv = (1/cov_var) * mu_m1_inv
-                        h_m1_for = h_m1_for - rel_3[:emb_dim//2] * (1 / J_m2_inv) * h_m2_inv
-                        J_m1_for = (1/cov_var) - rel_3[:emb_dim//2] * (1 / J_m2_inv) * rel_3[:emb_dim//2]
-                        h_m1_inv = h_m1_inv - rel_3[emb_dim//2:] * (1 / J_m2_for) * h_m2_for
-                        J_m1_inv = (1/cov_var) - rel_3[emb_dim//2:] * (1 / J_m2_for) * rel_3[emb_dim//2:]
+                        # marginal
+                        h_m1_for = h_m1_for + rel_3[:emb_dim//2] * (1 / J_m2_inv) * h_m2_inv
+                        J_m1_for = (1/cov_var) + rel_3[:emb_dim//2] * (1 / J_m2_inv) * rel_3[:emb_dim//2]
+                        h_m1_inv = h_m1_inv + rel_3[emb_dim//2:] * (1 / J_m2_for) * h_m2_for
+                        J_m1_inv = (1/cov_var) + rel_3[emb_dim//2:] * (1 / J_m2_for) * rel_3[emb_dim//2:]
+                        # conditional
                         # h_m1_for = h_m1_for + h_m2_inv; h_m1_inv = h_m1_inv + h_m2_for
                         # J_m1_for = (1/cov_var) + J_m2_inv; J_m1_inv = (1/cov_var) + J_m2_for
 
@@ -1866,10 +1868,13 @@ class KBCModel(nn.Module, ABC):
                             J_u_for = (1/cov_target)
                             J_u_inv = (1/cov_target)
 
-                        h_u_for = h_u_for - rel_1[:emb_dim//2] * (1 / J_m1_inv) * h_m1_inv
-                        J_u_for = J_u_for - rel_1[:emb_dim//2] * (1 / J_m1_inv) * rel_1[:emb_dim//2]
-                        h_u_inv = h_u_inv - rel_1[emb_dim//2:] * (1 / J_m1_for) * h_m1_for
-                        J_u_inv = J_u_inv - rel_1[emb_dim//2:] * (1 / J_m1_for) * rel_1[emb_dim//2:]
+                        # marginal
+
+                        h_u_for = h_u_for + rel_1[:emb_dim//2] * (1 / J_m1_inv) * h_m1_inv
+                        J_u_for = J_u_for + rel_1[:emb_dim//2] * (1 / J_m1_inv) * rel_1[:emb_dim//2]
+                        h_u_inv = h_u_inv + rel_1[emb_dim//2:] * (1 / J_m1_for) * h_m1_for
+                        J_u_inv = J_u_inv + rel_1[emb_dim//2:] * (1 / J_m1_for) * rel_1[emb_dim//2:]
+                        # conditional
                         # h_u_for = h_u_for + h_m1_inv; h_u_inv = h_u_inv + h_m1_for
                         # J_u_for = J_u_for + (1/cov_var); J_u_inv = J_u_inv + (1/cov_var)
                         mu_u_for = h_u_for / J_u_for
@@ -1908,9 +1913,9 @@ class KBCModel(nn.Module, ABC):
                         mu_d_inv2 = rhs_4[emb_dim//2:] * rel_4[:emb_dim//2]
                         h_d_inv2 = (1/cov_anchor) * mu_d_inv2
 
-                        h_m2_for = h_m2_for + h_d_inv1 + h_d_inv2
+                        h_m2_for = h_m2_for + (h_d_inv1 + h_d_inv2)/2
                         J_m2_for = (1/cov_var) + (1/cov_anchor) + (1/cov_anchor)
-                        h_m2_inv = h_m2_inv + h_d_for1 + h_d_for2
+                        h_m2_inv = h_m2_inv + (h_d_for1 + h_d_for2)/2
                         J_m2_inv = (1/cov_var) + (1/cov_anchor) + (1/cov_anchor)
                         mu_m2_for = h_m2_for / J_m2_for
                         mu_m2_inv = h_m2_inv / J_m2_inv
@@ -1919,13 +1924,15 @@ class KBCModel(nn.Module, ABC):
                         h_m1_for = (1/cov_var) * mu_m1_for
                         mu_m1_inv = possible_tails_emb[0][i*5+j, emb_dim//2:]
                         h_m1_inv = (1/cov_var) * mu_m1_inv
+                        # marginal
 
-                        h_m1_for = h_m1_for - rel_2[:emb_dim//2] * (1 / J_m2_inv) * h_m2_inv
-                        J_m1_for = (1/cov_var) - rel_2[:emb_dim//2] * (1 / J_m2_inv) * rel_2[:emb_dim//2]
-                        h_m1_inv = h_m1_inv - rel_2[emb_dim//2:] * (1 / J_m2_for) * h_m2_for
-                        J_m1_inv = (1/cov_var) - rel_2[emb_dim//2:] * (1 / J_m2_for) * rel_2[emb_dim//2:]
-                        # h_m1_for = h_m1_for + h_m2_inv; h_m1_inv = h_m1_inv + h_m2_for
-                        # J_m1_for = (1/cov_var) + J_m2_inv; J_m1_inv = (1/cov_var) + J_m2_for
+                        # h_m1_for = h_m1_for + rel_2[:emb_dim//2] * (1 / J_m2_inv) * h_m2_inv
+                        # J_m1_for = (1/cov_var) + rel_2[:emb_dim//2] * (1 / J_m2_inv) * rel_2[:emb_dim//2]
+                        # h_m1_inv = h_m1_inv + rel_2[emb_dim//2:] * (1 / J_m2_for) * h_m2_for
+                        # J_m1_inv = (1/cov_var) + rel_2[emb_dim//2:] * (1 / J_m2_for) * rel_2[emb_dim//2:]
+                        # conditional
+                        h_m1_for = h_m1_for + h_m2_inv; h_m1_inv = h_m1_inv + h_m2_for
+                        J_m1_for = (1/cov_var) + J_m2_inv; J_m1_inv = (1/cov_var) + J_m2_for
                         mu_m1_for = h_m1_for / J_m1_for; mu_m1_inv = h_m1_inv / J_m1_inv
 
                         if j == 0:
@@ -1936,11 +1943,12 @@ class KBCModel(nn.Module, ABC):
                             h_u_inv = (1/cov_target) * mu_u_inv
                             J_u_for = (1/cov_target)
                             J_u_inv = (1/cov_target)
-                        
-                        h_u_for = h_u_for - rel_1[:emb_dim//2] * (1 / J_m1_inv) * h_m1_inv
-                        J_u_for = J_u_for - rel_1[:emb_dim//2] * (1 / J_m1_inv) * rel_1[:emb_dim//2]
-                        h_u_inv = h_u_inv - rel_1[emb_dim//2:] * (1 / J_m1_for) * h_m1_for
-                        J_u_inv = J_u_inv - rel_1[emb_dim//2:] * (1 / J_m1_for) * rel_1[emb_dim//2:]
+                        # marginal
+                        h_u_for = h_u_for + rel_1[:emb_dim//2] * (1 / J_m1_inv) * h_m1_inv
+                        J_u_for = J_u_for + rel_1[:emb_dim//2] * (1 / J_m1_inv) * rel_1[:emb_dim//2]
+                        h_u_inv = h_u_inv + rel_1[emb_dim//2:] * (1 / J_m1_for) * h_m1_for
+                        J_u_inv = J_u_inv + rel_1[emb_dim//2:] * (1 / J_m1_for) * rel_1[emb_dim//2:]
+                        # conditional
                         # h_u_for = h_u_for + h_m1_inv; h_u_inv = h_u_inv + h_m1_for
                         # J_u_for = J_u_for + (1/J_m1_inv); J_u_inv = J_u_inv + J_m1_for
                         mu_u_for = h_u_for / J_u_for
@@ -2019,11 +2027,11 @@ class KBCModel(nn.Module, ABC):
             chain1, chain2 = chains[0], chains[1]
             lhs_1_emb, rel_1_emb, rhs_1_emb, lhs_2_emb, rel_2_emb, rhs_2_emb = chain1[0], chain1[1], chain1[2], chain2[0], chain2[1], chain2[2]
         
-        elif env.graph_type == '2_2' or env.graph_type == '1_3':
+        elif env.graph_type == '2_2' or env.graph_type == '1_3' or env.graph_type == '2_2_disj':
             part1, part2, part3 = parts[0], parts[1], parts[2]
             chain1, chain2, chain3 = chains[0], chains[1], chains[2]
             lhs_1_emb, rel_1_emb, rhs_1_emb, lhs_2_emb, rel_2_emb, rhs_2_emb, lhs_3_emb, rel_3_emb, rhs_3_emb = chain1[0], chain1[1], chain1[2], chain2[0], chain2[1], chain2[2], chain3[0], chain3[1], chain3[2]
-        elif env.graph_type == '2_3' or env.graph_type == '1_4' or env.graph_type == '3_3' or env.graph_type == '4_3':
+        elif env.graph_type == '2_3' or env.graph_type == '1_4' or env.graph_type == '3_3' or env.graph_type == '4_3' or env.graph_type == '4_3_disj':
             part1, part2, part3, part4 = parts[0], parts[1], parts[2], parts[3]
             chain1, chain2, chain3, chain4 = chains[0], chains[1], chains[2], chains[3]
             lhs_1_emb, rel_1_emb, rhs_1_emb, lhs_2_emb, rel_2_emb, rhs_2_emb, lhs_3_emb, rel_3_emb, rhs_3_emb, lhs_4_emb, rel_4_emb, rhs_4_emb = \
