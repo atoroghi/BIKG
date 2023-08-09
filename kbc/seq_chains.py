@@ -58,7 +58,7 @@ if __name__ == "__main__":
     extended_chain = ChaineDataset(Dataset(osp.join('data',args.dataset,'kbc_data')),5000)
     #extended_chain..set_attr(type1_2chain=chain1_2)
     chain_types = ['1_1' ,'1_2', '1_3', '2_2', '2_3', '3_3', '4_3', '2_2_disj', '4_3_disj']
-    #chain_types = ['2_2_disj']
+    #chain_types = ['1_2']
     #data_name = str(args.dataset) + '_'+ mode +'_' +'hard_seq'
     data_name = str(args.dataset) + '_'+ mode +'_' +f'{hardness}_seq'
 
@@ -68,6 +68,7 @@ if __name__ == "__main__":
         if chain_type == '1_2':
             used_targets = []
             used_anchors = []
+            num_leg_vars = []
             if mode == 'test':
                 considered_dataset = test
             elif mode == 'valid':
@@ -75,6 +76,8 @@ if __name__ == "__main__":
             enough = 0
             for j, triple in tqdm.tqdm(enumerate(considered_dataset)):
                 if len(extended_chain.type1_2chain) > 3000:
+                    print("average number of legitimate variables", np.mean(num_leg_vars))
+
                     for z in range(5):
                         print(extended_chain.type1_2chain[z].data['raw_chain'])
                     print("number of extracted chains for 1_2:", len(extended_chain.type1_2chain))
@@ -122,7 +125,7 @@ if __name__ == "__main__":
                     new_raw_chain = [[all_anchors[0], rel1, -1], [all_anchors[1], rel1, -1], [all_anchors[2], rel1, -1] ,  [-1, rel2, all_targets_hard] ]
                 elif hardness == 'complete':
                     new_raw_chain = [[all_anchors[0], rel1, -1], [all_anchors[1], rel1, -1], [all_anchors[2], rel1, -1] ,  [-1, rel2, all_targets_complete] ]
-                
+                num_leg_vars.append(len(all_vars))
                 used_anchors.append(anchor)
                 new_chain = Chain()
                 new_chain.data['type'] = '1chain2'

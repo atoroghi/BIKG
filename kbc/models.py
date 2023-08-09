@@ -2733,9 +2733,10 @@ class KBCModel(nn.Module, ABC):
                     # for the second anchor
                     lhs_3, rel_3, rhs_3 = chain3_seq
                     lhs_3, rel_3 = lhs_3[i].view(1,-1), rel_3[i].view(1,-1)
-                    z_scores_3, rhs_3d_3 = self.get_best_candidates(rel_3, lhs_3, None, candidates, last_step, None)
-                    rhs_2d_mean_3 = torch.mean(rhs_3d_3[0], dim=0).view(1, embedding_size)
-                    evidence3_mean = rhs_2d_mean_3
+                    # z_scores_3, rhs_3d_3 = self.get_best_candidates(rel_3, lhs_3, None, candidates, last_step, None)
+                    # rhs_2d_mean_3 = torch.mean(rhs_3d_3[0], dim=0).view(1, embedding_size)
+                    # evidence3_mean = rhs_2d_mean_3
+                    evidence3_mean = lhs_3 * rel_3
 
                     evidence_mean = (evidence1_mean + evidence3_mean) / 2
                     target_emb = (1 /(cov_anchor + candidates * cov_target)) * ((cov_anchor)*target_emb + (2*candidates * cov_target)*evidence_mean)
@@ -2931,7 +2932,7 @@ class KBCModel(nn.Module, ABC):
             objective = self.t_norm
 
         chains, chain_instructions = env.chains, env.chain_instructions
-        chain_instructions = ['intersect_0_1','hop_1_3','hop_3_4']
+        #chain_instructions = ['intersect_0_1','hop_1_3','hop_3_4']
         #chain_instructions = ['intersect_0_1_2_3_4_5']
         #chain_instructions = ['intersect_0_1','hop_1_3']
         #chain_instructions = ['hop_0_3', 'hop_3_4']
@@ -3023,7 +3024,7 @@ class KBCModel(nn.Module, ABC):
 
                             else:
                                 # TODO: remove this
-                                candidate_cache['lhs_3'] = candidate_cache['lhs_2']
+                                #candidate_cache['lhs_3'] = candidate_cache['lhs_2']
                                 batch_scores, lhs_3d = candidate_cache[f"lhs_{ind}"]
                                 lhs = lhs_3d.view(-1, embedding_size)
 
