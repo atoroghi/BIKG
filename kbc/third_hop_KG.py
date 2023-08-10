@@ -7,7 +7,8 @@ import pickle
 from pathlib import Path
 import io
 #%%
-dataset = 'Movielens_twohop_new'
+#dataset = 'Movielens_twohop_new'
+dataset = 'LastFM_twohop'
 
 path = os.path.join(os.getcwd(),'..' , 'data', dataset)
 #path = os.path.join(os.getcwd() , 'data', dataset)
@@ -19,9 +20,15 @@ e_map_path = os.path.join(root, 'kg/e_map.dat')
 ent_rdf2id = {}
 ent_id2rdf = {}
 with open(e_map_path) as f:
+    i  = 0
     for line in f:
         triple = line.strip().split("\t")
-        string = triple[1]
+        try:
+            string = triple[1]
+            i +=1
+        except:
+            print(i)
+            print(triple[1])
         start_index = string.rfind("/") + 1
         end_index = string.rfind(">")
         ent_rdf2id[string[start_index:end_index]] = int(triple[0])
@@ -109,7 +116,7 @@ f2.close()
 f.close()
 
 
-# remember to filter out entiites that only occur few times
+# remember to filter out entiites that only occur few times in the end
 # %%
 # print the set of all relations in a file to choose from them the meaningful ones
 f2 = open(os.path.join(root, 'kg', third_hop_kg_name), 'r')
@@ -139,6 +146,7 @@ for line in f4:
 f4.close()
 
 # %%
+# this r_map that we open should be the r_map at the end of second hop
 existing_rels = {}
 f = open(os.path.join(root, 'kg', 'r_map.dat'), 'r')
 for line in f:
@@ -234,7 +242,7 @@ f.close(); f1.close(); f2.close(); f5.close()
 #        existing_rels[r_name] = r_id
 #f.close()
 # %%
-# update the r_map file
+# update the r_map file. remember after this file is saved, make this the r_map.dat and previous one r_map_twohop
 f = open(os.path.join(root, 'kg', 'r_map_threehop.dat'), 'w')
 for r in existing_rels.keys():
     f.write(str(existing_rels[r]) + "\t" + "<http://rdf.freebase.com/ns/"+ r +">" + "\n")
@@ -245,7 +253,8 @@ f.close()
 secondhop = os.path.join(root, 'kg', 'train_secondhop.dat')
 a2 = np.genfromtxt(secondhop, delimiter='\t', dtype=np.int32)
 column3_counts = np.bincount(a2[:, 2])
-values_to_delete = np.where((column3_counts < 5))[0]
+#values_to_delete = np.where((column3_counts < 5))[0]   # for Movielens
+values_to_delete = np.where((column3_counts < 3))[0]    # for LastFM
 
 # %%
 a2 = a2[ ~np.isin(a2[:, 2], values_to_delete)]
@@ -254,8 +263,8 @@ a2 = a2[ ~np.isin(a2[:, 2], values_to_delete)]
 thirdhop = os.path.join(root, 'kg', 'train_thirdhop.dat')
 a3 = np.genfromtxt(thirdhop, delimiter='\t', dtype=np.int32)
 column3_counts2 = np.bincount(a3[:, 2])
-values_to_delete2 = np.where((column3_counts2 < 5))[0]
-
+#values_to_delete2 = np.where((column3_counts2 < 5))[0]  # for Movielens
+values_to_delete2 = np.where((column3_counts2 < 3))[0]  # for LastFM
 
 
 # %%

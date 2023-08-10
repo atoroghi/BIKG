@@ -9,7 +9,8 @@ from pathlib import Path
 import io
 
 #%%
-dataset = 'Movielens'
+#dataset = 'Movielens'
+dataset = 'LastFM'
 
 path = os.path.join(os.getcwd(),'..' , 'data', dataset)
 #path = os.path.join(os.getcwd() , 'data', dataset)
@@ -158,7 +159,8 @@ i1 = 0 ; i2 = 0
 for line in f1:
     try:
         h, r, t = line.strip().split("\t")
-        if r in selected_rels:
+        #if r in selected_rels:
+        if r in existing_rels:
             f2.write(str(h) + "\t" + str(existing_rels[r]) + "\t" + str(t) + "\n")
             i2 += 1
         i1 += 1

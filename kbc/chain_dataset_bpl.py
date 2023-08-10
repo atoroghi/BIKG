@@ -120,17 +120,18 @@ class ChaineDataset():
     def __type1_2chains__(self):
         try:
             # taking each triple in the test set e.g., (13, 1, 51)
-            for test_triple in tqdm(self.raw_data.data['test_with_kg'][1060617:]):
+            #for test_triple in tqdm(self.raw_data.data['test_with_kg'][1060617:]):
             #for test_triple in tqdm(self.raw_data.data['test_with_kg'][:1060617]):
+            for test_triple in tqdm(self.raw_data.data['test_with_kg'][893666:]):
+            #for test_triple in tqdm(self.raw_data.data['test_with_kg'][:893666]):
             #for test_triple in tqdm(self.raw_data.data['test_with_kg']):
                 if test_triple[1] == self.likes_rel and test_triple[2] in self.reverse_maps:
                     user = test_triple[0]
                     item = test_triple[2]
+                    if item not in self.neighbour_relations:
+                        continue
                     self.users.append(user)
                     self.items.append(item)
-                    #print(test_triple)
-                    #sys.exit()
-
                     
                     # first part of the chain is the user and item
                     test_lhs_chain_1 = (test_triple[0], test_triple[1])
@@ -139,10 +140,9 @@ class ChaineDataset():
                     
                     # item is added to answers
                     test_answers_chain_1 = [test_triple[2]]
+                    
                     # neighbour relations of the tail (answer) are the potential continuations of the chain
                     potential_chain_cont = [(x, self.neighbour_relations[x][:5]) for x in test_answers_chain_1]
-                    #print(potential_chain_cont)                    
-                    #sys.exit()
                     # potential is a tuple of the answer and the neighbour relations of each answer
                     for potential in potential_chain_cont:
 
@@ -169,8 +169,6 @@ class ChaineDataset():
 
                             for x in continuations[:5]
                         ]
-                        #print(raw_chains)
-                        #sys.exit()
                         # raw_chain: [ [user, likes, item], [item, relation, [tails]] ]
 
                         # storing raw_chains in a list of Chain objects and updating its attributes
@@ -210,10 +208,12 @@ class ChaineDataset():
     # this is 2i
     def __type2_2chains__(self):
         try:
-            #print(self.reverse_maps[17379])
+        
+            #print(self.reverse_maps[39292])
             #sys.exit()
-            for test_triple in tqdm(self.raw_data.data['test_with_kg'][1060617:]):
+            #for test_triple in tqdm(self.raw_data.data['test_with_kg'][1060617:]):
             #for test_triple in tqdm(self.raw_data.data['test_with_kg'][:1060617]):
+            for test_triple in tqdm(self.raw_data.data['test_with_kg'][893666:]):
                 if test_triple[1] == self.likes_rel and test_triple[2] in self.reverse_maps:
                     #print(test_triple)
                     #sys.exit()
@@ -223,6 +223,8 @@ class ChaineDataset():
                     #print(ans)
                     #print(self.reverse_maps[ans])
                     #sys.exit()
+                    if item not in self.neighbour_relations:
+                        continue
                     
 
             #for ans in tqdm(self.reverse_maps):
@@ -306,12 +308,15 @@ class ChaineDataset():
     def __type1_3chains__(self):
         try:
             # taking each triple in the test set e.g., (13, 1, 51)
-            for test_triple in tqdm(self.raw_data.data['test_with_kg'][1060617:]):
+            #for test_triple in tqdm(self.raw_data.data['test_with_kg'][1060617:]):
             #for test_triple in tqdm(self.raw_data.data['test_with_kg'][:1060617]):
+            for test_triple in tqdm(self.raw_data.data['test_with_kg'][893666:]):
             #for test_triple in tqdm(self.raw_data.data['test_with_kg']):
                 if test_triple[1] == self.likes_rel and test_triple[2] in self.reverse_maps:
                     user = test_triple[0]
                     item = test_triple[2]
+                    if item not in self.neighbour_relations:
+                        continue
                     self.users.append(user)
                     self.items.append(item)
                     #sys.exit()
@@ -420,12 +425,15 @@ class ChaineDataset():
     def __type1_4chains__(self):
         try:
             # taking each triple in the test set e.g., (13, 1, 51)
-            for test_triple in tqdm(self.raw_data.data['test_with_kg'][1060617:]):
+            #for test_triple in tqdm(self.raw_data.data['test_with_kg'][1060617:]):
             #for test_triple in tqdm(self.raw_data.data['test_with_kg'][:1060617]):
+            for test_triple in tqdm(self.raw_data.data['test_with_kg'][893666:]):
             #for test_triple in tqdm(self.raw_data.data['test_with_kg']):
                 if test_triple[1] == self.likes_rel and test_triple[2] in self.reverse_maps:
                     user = test_triple[0]
                     item = test_triple[2]
+                    if item not in self.neighbour_relations:
+                        continue
                     self.users.append(user)
                     self.items.append(item)
                     #sys.exit()
@@ -560,13 +568,17 @@ class ChaineDataset():
 # this is 3i
     def __type2_3chains__(self):
         try:
-            for test_triple in tqdm(self.raw_data.data['test_with_kg'][1060617:]):
+            #for test_triple in tqdm(self.raw_data.data['test_with_kg'][1060617:]):
             #for test_triple in tqdm(self.raw_data.data['test_with_kg'][:1060617]):
+            for test_triple in tqdm(self.raw_data.data['test_with_kg'][893666:]):
             #for test_triple in tqdm(self.raw_data.data['test_with_kg']):
                 if test_triple[1] == self.likes_rel and test_triple[2] in self.reverse_maps:
                     #print(test_triple)
                     user = test_triple[0]
                     item = test_triple[2]
+                    if item not in self.neighbour_relations:
+
+                        continue
                     ans = item
 
                     potential_chain_rel = [(ans, x) for x in self.neighbour_relations[ans]]
@@ -630,12 +642,15 @@ class ChaineDataset():
 
         try:
             # it's just a 2i in which one tail is extended
-            for test_triple in tqdm(self.raw_data.data['test_with_kg'][1060617:]):
+            #for test_triple in tqdm(self.raw_data.data['test_with_kg'][1060617:]):
             #for test_triple in tqdm(self.raw_data.data['test_with_kg'][:1060617]):
+            for test_triple in tqdm(self.raw_data.data['test_with_kg'][893666:]):
                 if test_triple[1] == self.likes_rel and test_triple[2] in self.reverse_maps:
                     #sys.exit()
                     user = test_triple[0]
                     item = test_triple[2]
+                    if item not in self.neighbour_relations:
+                        continue
                     ans = item          
                 
                     potential_chain_rel = [(ans, x) for x in self.neighbour_relations[ans][:5]]
@@ -705,13 +720,16 @@ class ChaineDataset():
         chains_recorder = []
         try:
             # first part of the chain is the same as in 2p (user, item, sth)
-            for test_triple in tqdm(self.raw_data.data['test_with_kg'][1060617:]):
+            #for test_triple in tqdm(self.raw_data.data['test_with_kg'][1060617:]):
             #for test_triple in tqdm(self.raw_data.data['test_with_kg'][:1060617]):
+            for test_triple in tqdm(self.raw_data.data['test_with_kg'][893666:]):
                 # the rest is like a normal 2 i (not with item as the connector node)
 
                 if test_triple[1] == self.likes_rel and test_triple[2] in self.reverse_maps:
                     user = test_triple[0]
                     item = test_triple[2]
+                    if item not in self.neighbour_relations:
+                        continue
                     ans = item
                     self.users.append(user)
                     self.items.append(item)
@@ -810,7 +828,7 @@ def load_chain_data(data_path):
 
 if __name__ == "__main__":
 
-    big_datasets = ['amazon-book', 'yelp2018', 'Movielens', 'LastFM', 'FB15k', 'Movielens_twohop']
+    big_datasets = ['amazon-book', 'yelp2018', 'Movielens', 'LastFM_twohop', 'FB15k', 'Movielens_twohop']
     datasets = big_datasets
 
     parser = argparse.ArgumentParser(

@@ -13,15 +13,15 @@ if __name__ == '__main__':
     #cov_anchors = [1e5]
     #cov_vars = [1e5]
     #cov_targets = [1e5]
-    cov_anchors = [1e-2, 1e-1,1e1,1e2]
-    cov_vars = [1e-2, 1e-1,1e1,1e2]
-    cov_targets = [1e-2, 1e-1,1e1,1e2]
+    cov_anchors = [1e-3,1e-2, 1e-1,1e1,1e2,1e3]
+    cov_vars = [1e-3,1e-2, 1e-1,1e1,1e2,1e3]
+    cov_targets = [1e-3,1e-2, 1e-1,1e1,1e2,1e3]
 
     #cov_anchors = [1e-2, 1e-1,1e1, 1e2]
     #cov_vars = [1e-2, 1e-1,1e1, 1e2]
     #cov_targets = [1e-2, 1e-1,1e1, 1e2]
-    experiment_name = '1_2_inst_new'
-    chain_type = '1_2'
+    experiment_name = '4_3_marginal_inst_new'
+    chain_type = '4_3'
     os.mkdir(experiment_name)
 
 

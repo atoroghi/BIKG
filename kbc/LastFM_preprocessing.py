@@ -59,7 +59,8 @@ def add_inverse(rec, kg):
 #dataset = 'Movielens (no_rev)'
 #dataset = 'LastFM'
 #dataset = 'AmazonBook'
-dataset = 'Movielens_twohop_nouser'
+#dataset = 'Movielens_twohop_nouser'
+dataset = 'LastFM_twohop'
 from pathlib import Path
 import pickle
 
@@ -78,7 +79,7 @@ kg = np.genfromtxt(kg_path, delimiter='\t', dtype=np.int32)
 
 
 # in case of LFM, there are entities in test and valid that are not in train
-if dataset == 'LastFM':
+if dataset == 'LastFM' or dataset=='LastFM_twohop':
     kg_test = np.genfromtxt(kg_path_test, delimiter='\t', dtype=np.int32)
     kg_valid = np.genfromtxt(kg_path_valid, delimiter='\t', dtype=np.int32)
     kg = np.concatenate((kg, kg_test, kg_valid), axis=0)
@@ -89,7 +90,8 @@ rec = np.genfromtxt(rec_path, delimiter='\t', dtype=np.int32)
 # reduce the no of entities in the too large kg
 
 column3_counts = np.bincount(kg[:, 2])
-values_to_delete = np.where((column3_counts < 5))[0]
+#values_to_delete = np.where((column3_counts < 3))[0] #for Movielens_twohop
+values_to_delete = np.where((column3_counts < 3))[0] #for LastFM_twohop
 kg = kg[ ~np.isin(kg[:, 2], values_to_delete)]
 
 #%%
@@ -122,7 +124,7 @@ with open(item2kg_path) as f:
     for line in f:
         ml_id = re.search('(.+?)\t', line)
         fb_http = re.search('\t(.+?)\n', line)
-        if dataset == 'Movielens' or dataset == 'LastFM' or dataset == 'Movielens_twohop':
+        if dataset == 'Movielens' or dataset == 'LastFM' or dataset == 'Movielens_twohop' or dataset=='LastFM_twohop':
             ml2fb_map.update({int(ml_id.group(1)) : fb_http.group(1)})
 
 #%%
@@ -399,6 +401,7 @@ valid_kg = valid[valid[:, 1] != np.max(train[:, 1])]
 
 kg_all = np.concatenate((train_kg, test_kg, valid_kg), axis = 0)
 test_with_kg = np.concatenate((test, kg_all), axis = 0)
+np.random.shuffle(test_with_kg)
 # %%
 with open(os.path.join(path, 'test_with_kg.txt.pickle'), 'wb') as f:
     pickle.dump(test_with_kg, f)
