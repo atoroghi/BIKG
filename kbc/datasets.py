@@ -63,9 +63,10 @@ class Dataset(object):
         # whether we want to evaluate missing lhs or rhs or both
         missing = [missing_eval]
         #missing eval is 'both' by default
-        if missing_eval == 'both':
-            missing = ['rhs', 'lhs']
-        #missing = ['rhs']
+        #NOTE: difference between cqd and my simple
+        # if missing_eval == 'both':
+        #     missing = ['rhs', 'lhs']
+        missing = ['rhs']
 
         mean_reciprocal_rank = {}
         hits_at = {}
@@ -84,24 +85,24 @@ class Dataset(object):
             # for a triple [10,32,179], we also have [179,33,10] in the dataset
             # and for 'rhs' and 'lhs', we have both (10,32):179 and (179,33):10
             #so we can basically just consider the 'rhs' missing and get rid of this
-            if m == 'lhs':
-                # swap the first and second column
-                tmp = torch.clone(q[:, 0])
-                q[:, 0] = q[:, 2]
-                q[:, 2] = tmp
+            # if m == 'lhs':
+            #     # swap the first and second column
+            #     tmp = torch.clone(q[:, 0])
+            #     q[:, 0] = q[:, 2]
+            #     q[:, 2] = tmp
             #NOTE
             # Comment these lines if rev relations do not have their numbers (my Simple)
             # OW, uncomment them
-                # Note: in q2b relations are labeled as
-                # [rel1, rel1inv, rel2, rel2inv, ...]
-                # In contrast, KBC uses
-                # [rel1, rel2, ..., rel1inv, rel2inv, ...]
-                # That's the reason for this:
-                rels = q[:, 1].clone()
-                q[:, 1][rels % 2 == 0] += 1
-                q[:, 1][rels % 2 != 0] -= 1
-                # Instead of:
-                # q[:, 1] += self.n_predicates // 2
+                # # Note: in q2b relations are labeled as
+                # # [rel1, rel1inv, rel2, rel2inv, ...]
+                # # In contrast, KBC uses
+                # # [rel1, rel2, ..., rel1inv, rel2inv, ...]
+                # # That's the reason for this:
+                # rels = q[:, 1].clone()
+                # q[:, 1][rels % 2 == 0] += 1
+                # q[:, 1][rels % 2 != 0] -= 1
+                # # Instead of:
+                # # q[:, 1] += self.n_predicates // 2
 
             # get the ranks of the correct answers (while skipping the to_skip) and compute the mean reciprocal rank and hits@k
 

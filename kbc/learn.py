@@ -31,10 +31,10 @@ def avg_both(mrrs: Dict[str, float], hits: Dict[str, torch.FloatTensor]):
 	# TODO
 	# If reverese direction has not its own numbers in the dataset, then the next two lines are commented. OW, we won't take the average.
 	# the next two are cqd style. 3 and 4 my style
-	m = (mrrs['lhs'] + mrrs['rhs']) / 2.
-	h = (hits['lhs'] + hits['rhs']) / 2.
-	# m = mrrs['rhs']
-	# h = hits['rhs']
+	#m = (mrrs['lhs'] + mrrs['rhs']) / 2.
+	#h = (hits['lhs'] + hits['rhs']) / 2.
+	m = mrrs['rhs']
+	h = hits['rhs']
 	return {'MRR': m, 'hits@[1,3,10]': h}
 
 
