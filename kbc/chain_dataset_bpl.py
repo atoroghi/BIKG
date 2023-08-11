@@ -65,6 +65,13 @@ class ChaineDataset():
 
         self.users = []
         self.items = []
+        self.type1_2users = []
+        self.type1_3items = []
+        self.type1_4items = []
+        self.type2_2items = []
+        self.type2_3items = []
+        self.type3_3items = []
+        self.type4_3items = []
 
 
 
@@ -75,12 +82,12 @@ class ChaineDataset():
             self.__reverse_maps__()
             # current chains: 1_2, 2_2, 2_3, 1_3, 1_4
             self.__type1_2chains__()
-            self.__type2_2chains__()
-            self.__type1_3chains__()
-            self.__type1_4chains__()
-            self.__type2_3chains__()
-            self.__type3_3chains__()
-            self.__type4_3chains__() 
+            #self.__type2_2chains__()
+            #self.__type1_3chains__()
+            #self.__type1_4chains__()
+            #self.__type2_3chains__()
+            #self.__type3_3chains__()
+            #self.__type4_3chains__() 
 
         except RuntimeError as e:
             print(e)
@@ -128,6 +135,7 @@ class ChaineDataset():
                 if test_triple[1] == self.likes_rel and test_triple[2] in self.reverse_maps:
                     user = test_triple[0]
                     item = test_triple[2]
+                    #if item not in self.neighbour_relations or user in self.type1_2users:
                     if item not in self.neighbour_relations:
                         continue
                     self.users.append(user)
@@ -169,6 +177,7 @@ class ChaineDataset():
 
                             for x in continuations[:5]
                         ]
+                        self.type1_2users.append(user)
                         # raw_chain: [ [user, likes, item], [item, relation, [tails]] ]
 
                         # storing raw_chains in a list of Chain objects and updating its attributes
