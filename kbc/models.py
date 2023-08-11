@@ -1546,16 +1546,17 @@ class KBCModel(nn.Module, ABC):
                             J_u_for = (1/cov_target)
                             J_u_inv = (1/cov_target)
                         h_u_for = h_u_for + rel_1[:emb_dim//2] * (1 / J_m1_inv) * h_m1_inv
-
-                        
                         J_u_for = J_u_for + rel_1[:emb_dim//2] * (1 / J_m1_inv) * rel_1[:emb_dim//2]
                         h_u_inv = h_u_inv + rel_1[emb_dim//2:] * (1 / J_m1_for) * h_m1_for
                         J_u_inv = J_u_inv + rel_1[emb_dim//2:] * (1 / J_m1_for) * rel_1[emb_dim//2:]
+
+                        
                         # conditional
                         # h_u_for = h_u_for + h_m1_inv
                         # h_u_inv = h_u_inv + h_m1_for
-                        # mu_u_for = h_u_for / J_u_for
-                        # mu_u_inv = h_u_inv / J_u_inv
+
+                        mu_u_for = h_u_for / J_u_for
+                        mu_u_inv = h_u_inv / J_u_inv
 
                         user_embs[i*5+j, :emb_dim//2] = mu_u_for
                         user_embs[i*5+j, emb_dim//2:] = mu_u_inv
@@ -1593,17 +1594,17 @@ class KBCModel(nn.Module, ABC):
 
                         #Marginal
 
-                        h_m2_for = h_m2_for + rel_3[:emb_dim//2] * (1 / J_m3_inv) * h_m3_inv
-                        J_m2_for = (1/cov_var) + rel_3[:emb_dim//2] * (1 / J_m3_inv) * rel_3[:emb_dim//2]
-                        h_m2_inv = h_m2_inv + rel_3[emb_dim//2:] * (1 / J_m3_for) * h_m3_for
-                        J_m2_inv = (1/cov_var) + rel_3[emb_dim//2:] * (1 / J_m3_for) * rel_3[emb_dim//2:]
-                        mu_m2_for = h_m2_for / J_m2_for; mu_m2_inv = h_m2_inv / J_m2_inv
+                        # h_m2_for = h_m2_for + rel_3[:emb_dim//2] * (1 / J_m3_inv) * h_m3_inv
+                        # J_m2_for = (1/cov_var) + rel_3[:emb_dim//2] * (1 / J_m3_inv) * rel_3[:emb_dim//2]
+                        # h_m2_inv = h_m2_inv + rel_3[emb_dim//2:] * (1 / J_m3_for) * h_m3_for
+                        # J_m2_inv = (1/cov_var) + rel_3[emb_dim//2:] * (1 / J_m3_for) * rel_3[emb_dim//2:]
+                        # mu_m2_for = h_m2_for / J_m2_for; mu_m2_inv = h_m2_inv / J_m2_inv
 
                         #Conditional
 
-                        # h_m2_for = h_m2_for + h_m3_inv; h_m2_inv = h_m2_inv + h_m3_for
-                        # J_m2_for = (1/cov_var) + J_m3_inv; J_m2_inv = (1/cov_var) + J_m3_for
-                        # mu_m2_for = h_m2_for / J_m2_for; mu_m2_inv = h_m2_inv / J_m2_inv
+                        h_m2_for = h_m2_for + h_m3_inv; h_m2_inv = h_m2_inv + h_m3_for
+                        J_m2_for = (1/cov_var) + J_m3_inv; J_m2_inv = (1/cov_var) + J_m3_for
+                        mu_m2_for = h_m2_for / J_m2_for; mu_m2_inv = h_m2_inv / J_m2_inv
 
                         mu_m1_for = possible_tails_emb[0][i*5+j, :emb_dim//2]
                         h_m1_for = (1/cov_var) * mu_m1_for
@@ -1677,25 +1678,25 @@ class KBCModel(nn.Module, ABC):
                         # print(torch.cdist(mu_gt_inv.unsqueeze(dim=0), mu_m_inv.unsqueeze(dim=0), p=2))
                         
                         mu_d_for1 = rhs_2[:emb_dim//2] * rel_2[emb_dim//2:]
-                        #h_d_for1 = (1/cov_anchor) * mu_d_for1
+                        h_d_for1 = (1/cov_anchor) * mu_d_for1
                         mu_d_inv1 = rhs_2[emb_dim//2:] * rel_2[:emb_dim//2]
-                        #h_d_inv1 = (1/cov_anchor) * mu_d_inv1
+                        h_d_inv1 = (1/cov_anchor) * mu_d_inv1
                         mu_d_for2 = rhs_3[:emb_dim//2] * rel_3[emb_dim//2:]
-                        #h_d_for2 = (1/cov_anchor) * mu_d_for2
+                        h_d_for2 = (1/cov_anchor) * mu_d_for2
                         mu_d_inv2 = rhs_3[emb_dim//2:] * rel_3[:emb_dim//2]
-                        #h_d_inv2 = (1/cov_anchor) * mu_d_inv2
-                        mu_d_for = mu_d_for1 + mu_d_for2
-                        mu_d_inv = mu_d_inv1 + mu_d_inv2
-                        h_d_for = (1/cov_anchor) * mu_d_for
-                        h_d_inv = (1/cov_anchor) * mu_d_inv
+                        h_d_inv2 = (1/cov_anchor) * mu_d_inv2
+                        # mu_d_for = (mu_d_for1 + mu_d_for2)/2
+                        # mu_d_inv = (mu_d_inv1 + mu_d_inv2)/2
+                        # h_d_for = (1/cov_anchor) * mu_d_for
+                        # h_d_inv = (1/cov_anchor) * mu_d_inv
                         # print("dist between mu_d and mu_m")
                         # print(torch.cdist(mu_m_for.unsqueeze(dim=0), mu_d_inv.unsqueeze(dim=0), p=2))
                         # print(torch.cdist(mu_m_inv.unsqueeze(dim=0), mu_d_for.unsqueeze(dim=0), p=2))
                         
 
-                        h_m_for = h_m_for + h_d_inv
+                        h_m_for = h_m_for + (h_d_inv1 + h_d_inv2)/2
                         J_m_for = (1/cov_var) + (1/cov_anchor) + (1/cov_anchor)
-                        h_m_inv = h_m_inv + h_d_for
+                        h_m_inv = h_m_inv + (h_d_for1 + h_d_for2)/2
                         J_m_inv = (1/cov_var) + (1/cov_anchor) + (1/cov_anchor)
                         mu_m_for = h_m_for / J_m_for
                         mu_m_inv = h_m_inv / J_m_inv
@@ -1718,15 +1719,18 @@ class KBCModel(nn.Module, ABC):
                             J_u_for = (1/cov_target)
                             J_u_inv = (1/cov_target)
 
-                        # h_u_for = h_u_for - rel_1[:emb_dim//2] * (1 / J_m_inv) * h_m_inv
-                        # J_u_for = J_u_for - rel_1[:emb_dim//2] * (1 / J_m_inv) * rel_1[:emb_dim//2]
-                        # h_u_inv = h_u_inv - rel_1[emb_dim//2:] * (1 / J_m_for) * h_m_for
-                        # J_u_inv = J_u_inv - rel_1[emb_dim//2:] * (1 / J_m_for) * rel_1[emb_dim//2:]
+                        h_u_for = h_u_for + rel_1[:emb_dim//2] * (1 / J_m_inv) * h_m_inv
+                        J_u_for = J_u_for + rel_1[:emb_dim//2] * (1 / J_m_inv) * rel_1[:emb_dim//2]
+                        h_u_inv = h_u_inv + rel_1[emb_dim//2:] * (1 / J_m_for) * h_m_for
+                        J_u_inv = J_u_inv + rel_1[emb_dim//2:] * (1 / J_m_for) * rel_1[emb_dim//2:]
 
                         # h_u_for = h_u_for + h_m_inv; h_u_inv = h_u_inv + h_m_for
                         # J_u_for = J_u_for + (1/cov_var); J_u_inv = J_u_inv + (1/cov_var)
                         # mu_u_for = h_u_for / J_u_for
                         # mu_u_inv = h_u_inv / J_u_inv
+
+                        mu_u_for = h_u_for / J_u_for
+                        mu_u_inv = h_u_inv / J_u_inv
 
 
 
@@ -1778,10 +1782,10 @@ class KBCModel(nn.Module, ABC):
                         mu_d_inv3 = rhs_4[emb_dim//2:] * rel_4[:emb_dim//2]
                         h_d_inv3 = (1/cov_anchor) * mu_d_inv3
 
-                        h_m_for = h_m_for + h_d_inv1 + h_d_inv2 + h_d_inv3
+                        h_m_for = h_m_for + (h_d_inv1 + h_d_inv2 + h_d_inv3)/3
 
                         J_m_for = (1/cov_var) + (1/cov_anchor) + (1/cov_anchor) + (1/cov_anchor)
-                        h_m_inv = h_m_inv + h_d_for1 + h_d_for2 + h_d_for3
+                        h_m_inv = h_m_inv + (h_d_for1 + h_d_for2 + h_d_for3)/3
                         J_m_inv = (1/cov_var) + (1/cov_anchor) + (1/cov_anchor) + (1/cov_anchor)
                         mu_m_for = h_m_for / J_m_for
                         mu_m_inv = h_m_inv / J_m_inv
@@ -1796,11 +1800,11 @@ class KBCModel(nn.Module, ABC):
                             J_u_for = (1/cov_target)
                             J_u_inv = (1/cov_target)
 
-                        h_u_for = h_u_for - rel_1[:emb_dim//2] * (1 / J_m_inv) * h_m_inv
+                        h_u_for = h_u_for + rel_1[:emb_dim//2] * (1 / J_m_inv) * h_m_inv
 
-                        J_u_for = J_u_for - rel_1[:emb_dim//2] * (1 / J_m_inv) * rel_1[:emb_dim//2]
-                        h_u_inv = h_u_inv - rel_1[emb_dim//2:] * (1 / J_m_for) * h_m_for
-                        J_u_inv = J_u_inv - rel_1[emb_dim//2:] * (1 / J_m_for) * rel_1[emb_dim//2:]
+                        J_u_for = J_u_for + rel_1[:emb_dim//2] * (1 / J_m_inv) * rel_1[:emb_dim//2]
+                        h_u_inv = h_u_inv + rel_1[emb_dim//2:] * (1 / J_m_for) * h_m_for
+                        J_u_inv = J_u_inv + rel_1[emb_dim//2:] * (1 / J_m_for) * rel_1[emb_dim//2:]
                         # h_u_for = h_u_for + h_m_inv; h_u_inv = h_u_inv + h_m_for
                         # J_u_for = J_u_for + (1/cov_var); J_u_inv = J_u_inv + (1/cov_var)
                         mu_u_for = h_u_for / J_u_for
