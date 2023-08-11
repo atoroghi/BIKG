@@ -20,8 +20,8 @@ if __name__ == '__main__':
     #cov_anchors = [1e-2, 1e-1,1e1, 1e2]
     #cov_vars = [1e-2, 1e-1,1e1, 1e2]
     #cov_targets = [1e-2, 1e-1,1e1, 1e2]
-    experiment_name = '2_2_marginal_ui'
-    chain_type = '2_2'
+    experiment_name = '1_3_marginal_ui_noncond'
+    chain_type = '1_3'
     os.mkdir(experiment_name)
 
 
