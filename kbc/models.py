@@ -1623,7 +1623,7 @@ class KBCModel(nn.Module, ABC):
                         h_u_inv = (1/cov_target) * mu_u_inv
                         J_u_for = (1/cov_target)
                         J_u_inv = (1/cov_target)
-                    new_env.chains = [(chain4[0][i].view(1,-1),chain4[1][i].view(1,-1),chain4[2]), (chain3[0], chain3[1][i].view(1,-1), chain3[2])]
+                    new_env.chains = [(chain1[0],chain1[1], chain1[2]),(chain3[0], chain3[1][i].view(1,-1), chain3[2]), (chain4[0],chain4[1][i].view(1,-1),chain4[2][i].view(1,-1))]
                     top_vars2_scores = self.query_answering_BF(new_env, candidates=candidates, t_norm=t_norm, batch_size=batch_size, scores_normalize=scores_normalize, explain=explain)
                     _, top_vars2_indices = torch.topk(top_vars2_scores, candidates, dim=1)
                     top_vars2_embs = self.entity_embeddings(top_vars2_indices[0])
