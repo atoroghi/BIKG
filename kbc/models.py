@@ -1919,9 +1919,9 @@ class KBCModel(nn.Module, ABC):
                             J_u_inv = (1/cov_target)
                         
                         var_scores, var_embs = self.get_best_candidates(rel_4.view(1,-1), rhs_4.view(1,-1), None, candidates=candidates, last_step=False, side='rhs')
-                        top_vars_mean = torch.mean(top_vars2_embs.squeeze(dim=0), dim=0).view(emb_dim)
+                        top_vars_mean = torch.mean(var_embs.squeeze(dim=0), dim=0).view(emb_dim)
                         mu_d_for1 = top_vars_mean[:emb_dim//2]* rel_3[emb_dim//2:]; mu_d_inv1 = top_vars_mean[emb_dim//2:]* rel_3[:emb_dim//2]
-                        h_d_for1 = (1/cov_anchor) * mu_d_for1; h_d_inv = (1/cov_anchor) * mu_d_inv1
+                        h_d_for1 = (1/cov_anchor) * mu_d_for1; h_d_inv1 = (1/cov_anchor) * mu_d_inv1
 
                         mu_d_for2 = rhs_2[:emb_dim//2] * rel_2[emb_dim//2:]
                         h_d_for2 = (1/cov_anchor) * mu_d_for2
