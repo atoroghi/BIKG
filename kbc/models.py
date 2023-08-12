@@ -1615,36 +1615,36 @@ class KBCModel(nn.Module, ABC):
                         lhs_3, rel_3, rhs_4 = None, rel_3_emb[i*5+j], None
                         lhs_2, rel_2, rhs_2 = None, rel_2_emb[i*5+j], None
                         lhs_1, rel_1, rhs_1 = lhs_1_emb[i*5+j], rel_1_emb[i*5+j], None
-                    if j == 0:
-                        mu_u = lhs_1
-                        mu_u_for = mu_u[:emb_dim//2]
-                        mu_u_inv = mu_u[emb_dim//2:]
-                        h_u_for = (1/cov_target) * mu_u_for
-                        h_u_inv = (1/cov_target) * mu_u_inv
-                        J_u_for = (1/cov_target)
-                        J_u_inv = (1/cov_target)
-                    new_env.chains = [(chain1[0],chain1[1], chain1[2]),(chain3[0], chain3[1][i].view(1,-1), chain3[2]), (chain4[0],chain4[1][i].view(1,-1),chain4[2][i].view(1,-1))]
-                    top_vars2_scores = self.query_answering_BF_Exist(new_env, candidates=candidates, t_norm=t_norm, batch_size=batch_size, scores_normalize=scores_normalize, explain=explain)
-                    _, top_vars2_indices = torch.topk(top_vars2_scores, candidates, dim=1)
-                    top_vars2_embs = self.entity_embeddings(top_vars2_indices[0])
-                    top_vars2_mean = torch.mean(top_vars2_embs.squeeze(dim=0), dim=0).view(emb_dim)
-                    mu_d_for = top_vars2_mean[:emb_dim//2]* rel_2[emb_dim//2:]; mu_d_inv = top_vars2_mean[emb_dim//2:]* rel_2[:emb_dim//2]
-                    h_d_for = (1/cov_anchor) * mu_d_for; h_d_inv = (1/cov_anchor) * mu_d_inv
-                    mu_m_for = possible_tails_emb[0][i*5+j, :emb_dim//2] 
-                    mu_m_inv = possible_tails_emb[0][i*5+j, emb_dim//2:]
-                    h_m_for = (1/cov_var) * mu_m_for; h_m_inv = (1/cov_var) * mu_m_inv
-                    J_m_for = 1/cov_var + 1/cov_anchor; J_m_inv = 1/cov_var + 1/cov_anchor
-                    h_m_for = h_m_for + h_d_inv; h_m_inv = h_m_inv + h_d_for
+                        if j == 0:
+                            mu_u = lhs_1
+                            mu_u_for = mu_u[:emb_dim//2]
+                            mu_u_inv = mu_u[emb_dim//2:]
+                            h_u_for = (1/cov_target) * mu_u_for
+                            h_u_inv = (1/cov_target) * mu_u_inv
+                            J_u_for = (1/cov_target)
+                            J_u_inv = (1/cov_target)
+                        new_env.chains = [(chain1[0],chain1[1], chain1[2]),(chain3[0], chain3[1][i].view(1,-1), chain3[2]), (chain4[0],chain4[1][i].view(1,-1),chain4[2][i].view(1,-1))]
+                        top_vars2_scores = self.query_answering_BF_Exist(new_env, candidates=candidates, t_norm=t_norm, batch_size=batch_size, scores_normalize=scores_normalize, explain=explain)
+                        _, top_vars2_indices = torch.topk(top_vars2_scores, candidates, dim=1)
+                        top_vars2_embs = self.entity_embeddings(top_vars2_indices)
+                        top_vars2_mean = torch.mean(top_vars2_embs.squeeze(dim=0), dim=0).view(emb_dim)
+                        mu_d_for = top_vars2_mean[:emb_dim//2]* rel_2[emb_dim//2:]; mu_d_inv = top_vars2_mean[emb_dim//2:]* rel_2[:emb_dim//2]
+                        h_d_for = (1/cov_anchor) * mu_d_for; h_d_inv = (1/cov_anchor) * mu_d_inv
+                        mu_m_for = possible_tails_emb[0][i*5+j, :emb_dim//2] 
+                        mu_m_inv = possible_tails_emb[0][i*5+j, emb_dim//2:]
+                        h_m_for = (1/cov_var) * mu_m_for; h_m_inv = (1/cov_var) * mu_m_inv
+                        J_m_for = 1/cov_var + 1/cov_anchor; J_m_inv = 1/cov_var + 1/cov_anchor
+                        h_m_for = h_m_for + h_d_inv; h_m_inv = h_m_inv + h_d_for
 
-                    h_u_for = h_u_for + rel_1[:emb_dim//2] * (1 / J_m_inv) * h_m_inv
-                    J_u_for = J_u_for + rel_1[:emb_dim//2] * (1 / J_m_inv) * rel_1[:emb_dim//2]
-                    h_u_inv = h_u_inv + rel_1[emb_dim//2:] * (1 / J_m_for) * h_m_for
-                    J_u_inv = J_u_inv + rel_1[emb_dim//2:] * (1 / J_m_for) * rel_1[emb_dim//2:]
-                    mu_u_for = h_u_for / J_u_for
-                    mu_u_inv = h_u_inv / J_u_inv
-                    user_embs[i*5+j, :emb_dim//2] = mu_u_for
-                    user_embs[i*5+j, emb_dim//2:] = mu_u_inv
-            scores = self.forward_emb(user_embs, rel_1_emb[0].unsqueeze(dim=0))
+                        h_u_for = h_u_for + rel_1[:emb_dim//2] * (1 / J_m_inv) * h_m_inv
+                        J_u_for = J_u_for + rel_1[:emb_dim//2] * (1 / J_m_inv) * rel_1[:emb_dim//2]
+                        h_u_inv = h_u_inv + rel_1[emb_dim//2:] * (1 / J_m_for) * h_m_for
+                        J_u_inv = J_u_inv + rel_1[emb_dim//2:] * (1 / J_m_for) * rel_1[emb_dim//2:]
+                        mu_u_for = h_u_for / J_u_for
+                        mu_u_inv = h_u_inv / J_u_inv
+                        user_embs[i*5+j, :emb_dim//2] = mu_u_for
+                        user_embs[i*5+j, emb_dim//2:] = mu_u_inv
+                scores = self.forward_emb(user_embs, rel_1_emb[0].unsqueeze(dim=0))
 
                 # cond_marginal
                 # for i in tqdm.tqdm(range(nb_queries // 5)):
@@ -2415,7 +2415,8 @@ class KBCModel(nn.Module, ABC):
         batches = make_batches(nb_queries, batch_size)
         # batches = [(0,1), (1,2), (2,3), ...]
 
-        for i, batch in enumerate(tqdm.tqdm(batches)):
+        #for i, batch in enumerate(tqdm.tqdm(batches)):
+        for i , batch in enumerate(batches):
             nb_branches = 1
             nb_ent = 0
             batch_scores = None
