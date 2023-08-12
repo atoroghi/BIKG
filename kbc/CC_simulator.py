@@ -13,15 +13,15 @@ if __name__ == '__main__':
     #cov_anchors = [1e5]
     #cov_vars = [1e5]
     #cov_targets = [1e5]
-    cov_anchors = [1e-3,1e-2, 1e-1,1e1,1e2,1e3]
-    cov_vars = [1e-3,1e-2, 1e-1,1e1,1e2,1e3]
-    cov_targets = [1e-3,1e-2, 1e-1,1e1,1e2,1e3]
+    cov_anchors = [1e-3,1e-2, 1e-1,1e1,1e2,1e3,1e4,1e5]
+    cov_vars = [1e-3,1e-2, 1e-1,1e1,1e2,1e3,1e4,1e5]
+    cov_targets = [1e-3,1e-2, 1e-1,1e1,1e2,1e3,1e4,1e5]
 
     #cov_anchors = [1e-2, 1e-1,1e1, 1e2]
     #cov_vars = [1e-2, 1e-1,1e1, 1e2]
     #cov_targets = [1e-2, 1e-1,1e1, 1e2]
-    experiment_name = '3_3_marginal_ui_noncond_ML'
-    chain_type = '3_3'
+    experiment_name = '4_3_marginal_ui_noncond_LFM'
+    chain_type = '4_3'
     os.mkdir(experiment_name)
 
 
@@ -32,10 +32,10 @@ if __name__ == '__main__':
 
                 #command = ["python3", "-m", "kbc.cqd_beam_bpl", "data/Movielens", "--model_path", "models/Movielens-SimplE-model-rank-50-epoch-40-1684629098.pt", "--dataset", "Movielens", "--candidates", "3", "--quantifier", "marginal_ui", "--cov_target", str(cov_target), "--cov_var", str(cov_var), "--cov_anchor", str(cov_anchor)]
                 #command = ["python3", "-m", "kbc.cqd_beam_bpl", "data/Movielens", "--model_path", "models/Movielens-SimplE-model-rank-50-epoch-40-1684629098.pt", "--dataset", "Movielens", "--candidates", "10", "--quantifier", "marginal_i", "--cov_target", str(cov_target), "--cov_var", str(cov_var), "--cov_anchor", str(cov_anchor)]
-                #command = ["python3", "-m", "kbc.cqd_beam_bpl", "data/LastFM_twohop", "--model_path", "models/LastFM_twohop-SimplE-model-rank-50-epoch-40-1691706573.pt", "--dataset", "LastFM_twohop", "--candidates", "1", "--quantifier", "marginal_ui", "--cov_target", str(cov_target), "--cov_var", str(cov_var), "--cov_anchor", str(cov_anchor), "--chain_type", str(chain_type), '--mode', 'test']
+                command = ["python3", "-m", "kbc.cqd_beam_bpl", "data/LastFM_twohop", "--model_path", "models/LastFM_twohop-SimplE-model-rank-50-epoch-40-1691706573.pt", "--dataset", "LastFM_twohop", "--candidates", "1", "--quantifier", "marginal_ui", "--cov_target", str(cov_target), "--cov_var", str(cov_var), "--cov_anchor", str(cov_anchor), "--chain_type", str(chain_type), '--mode', 'test']
                 #command = ["python3", "-m", "kbc.cqd_beam_bpl", "data/Movielens_twohop", "--model_path", "models/Movielens_twohop-SimplE-model-rank-20-epoch-50-1687626870.pt", "--dataset", "Movielens_twohop", "--candidates", "3", "--quantifier", "marginal_ui", "--cov_target", str(cov_target), "--cov_var", str(cov_var), "--cov_anchor", str(cov_anchor)]
                 #command = ["python3", "-m", "kbc.cqd_beam_bpl", "data/Movielens_twohop", "--model_path", "models/Movielens_twohop-SimplE-model-rank-20-epoch-50-1687626870.pt", "--dataset", "Movielens_twohop", "--candidates", "3", "--quantifier", "marginal_ui", "--cov_target", str(cov_target), "--cov_var", str(cov_var), "--cov_anchor", str(cov_anchor), "--chain_type", str(chain_type)]
-                command = ["python3", "-m", "kbc.cqd_beam_bpl", "data/Movielens_twohop", "--model_path", "models/Movielens_twohop-SimplE-model-rank-50-epoch-30-1687217986.pt", "--dataset", "Movielens_twohop", "--candidates", "1", "--quantifier", "marginal_ui", "--cov_target", str(cov_target), "--cov_var", str(cov_var), "--cov_anchor", str(cov_anchor), "--chain_type", str(chain_type), '--mode', 'valid']
+                #command = ["python3", "-m", "kbc.cqd_beam_bpl", "data/Movielens_twohop", "--model_path", "models/Movielens_twohop-SimplE-model-rank-50-epoch-30-1687217986.pt", "--dataset", "Movielens_twohop", "--candidates", "1", "--quantifier", "marginal_ui", "--cov_target", str(cov_target), "--cov_var", str(cov_var), "--cov_anchor", str(cov_anchor), "--chain_type", str(chain_type), '--mode', 'valid']
                 
                 with open(os.path.join(experiment_name, output_file), "w") as f:
                 #with open(output_file, "w") as f:
