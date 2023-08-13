@@ -1352,18 +1352,32 @@ class KBCModel(nn.Module, ABC):
         # rcount = (scores_m[0] > scores_m[0][gt]).sum().item() + 1
         # z_scores, z_indices = torch.topk(scores_m, k=10, dim=1)
 
+
         if env.graph_type == '1_2':
-            part1 , part2 = parts[0], parts[1]
-            intact_part1, intact_part2 = intact_parts[0], intact_parts[1]
+            # path = os.path.join(os.getcwd(), 'data', 'Movielens_twohop', 'kbc_data')
+            # with open(os.path.join(path, 'to_skip.pickle'), 'rb') as f:
+            #     to_skip = pickle.load(f)
+            # with open(os.path.join(path, 'train.txt.pickle'), 'rb') as f:
+            #     train = pickle.load(f)
+            # with open(os.path.join(path, 'test.txt.pickle'), 'rb') as f:
+            #     test = pickle.load(f)
+            # with open(os.path.join(path, 'valid.txt.pickle'), 'rb') as f:
+            #     valid = pickle.load(f)
+            # all_data = np.concatenate((train,test, valid), axis=0)
+            # part1 , part2 = parts[0], parts[1]
+            # intact_part1, intact_part2 = intact_parts[0], intact_parts[1]
 
             chain1, chain2 = chains[0], chains[1]
+            num_leg_lhss = []
 
             lhs_1_emb, rel_1_emb, rhs_1_emb, lhs_2_emb, rel_2_emb, rhs_2_emb = chain1[0], chain1[1], chain1[2], chain2[0], chain2[1], chain2[2]
             if not 'SimplE' in str(self.model_type):
                 raise NotImplementedError
             else:
                 for i in tqdm.tqdm(range(nb_queries // 5)):
-
+                    # evid = (intact_part2[i][2][0], intact_part2[i][1])
+                    #print(np.where((all_data[:,1]==intact_part2[i][1]) & (all_data[:,2]==intact_part2[i][2][0]))[0].shape[0])
+                    # num_leg_lhss.append(np.where((all_data[:,1]==intact_part2[i][1]) & (all_data[:,2]==intact_part2[i][2][0]))[0].shape[0])
                     for j in range(5):
                         # lhs_1 is the user belief. rhs_2 is the evidence embedding
                         lhs_1, rel_1, rhs_1 = lhs_1_emb[i*5+j], rel_1_emb[i*5+j], None
@@ -1478,6 +1492,8 @@ class KBCModel(nn.Module, ABC):
                         # for instantiated, we have to first find the top items as existential, then update user belief
 
                 # once we have the user embeddings for each query, we can calculate the recommendation scores
+                # print(np.mean(np.array(num_leg_lhss)))
+                # sys.exit()
                 scores = self.forward_emb(user_embs, rel_1_emb[0].unsqueeze(dim=0))
 
         elif env.graph_type == '1_3':
