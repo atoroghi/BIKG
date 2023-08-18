@@ -8,10 +8,10 @@ In order to use the code, please follow these steps:
 pip install -r requirements.txt
 ~~~
 ## 2- Download the Datasets
-You can either download the five datasets used in the paper from [here](https://drive.google.com/drive/folders/1pz6qYObdTdw4KprXZ0oE3OOG4TDrE8wW?usp=drive_link).
+You can download the five datasets used in the paper from [here](https://drive.google.com/drive/folders/1pz6qYObdTdw4KprXZ0oE3OOG4TDrE8wW?usp=drive_link) and de-compress them.
 
 ## 3- Download Embedding Models or Train them
-You can download the KGE models from [here](). Alternatively, you can train your own models using the following code with your desired arguments.
+You can download the KGE models from [here]() and de-compress them. Alternatively, you can train your own models using the following code with your desired arguments.
 ~~~
 python -m kbc.learn data/Movielens_twohop --rank 100 --max_epochs 300 --batch_size 128 --model SimplE --valid 1 --model_save_schedule 10
 ~~~
