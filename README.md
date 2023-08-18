@@ -1,5 +1,5 @@
 
-This repository contains the implementation of the paper #Bayesian Inference with Complex Knowledge Graph Evidence (BIKG)#
+This repository contains the implementation of the paper **Bayesian Inference with Complex Knowledge Graph Evidence (BIKG)**
 
 In order to use the code, please follow these steps:
 
