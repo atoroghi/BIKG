@@ -11,7 +11,7 @@ pip install -r requirements.txt
 You can download the five datasets used in the paper from [here](https://drive.google.com/drive/folders/1pz6qYObdTdw4KprXZ0oE3OOG4TDrE8wW?usp=drive_link) and de-compress them.
 
 ## 3- Download Embedding Models or Train them
-You can download the KGE models from [here](https://drive.google.com/drive/folders/1joInw77FnnbEy2qeQs1qg6kzqQ8hLJKQ?usp=drive_link) and de-compress them. Alternatively, you can train your own models using the following code with your desired arguments.
+You can download the KGE models from [here](https://drive.google.com/drive/folders/1joInw77FnnbEy2qeQs1qg6kzqQ8hLJKQ?usp=sharing) and de-compress them. Alternatively, you can train your own models using the following code with your desired arguments.
 ~~~
 python -m kbc.learn data/Movielens_twohop --rank 100 --max_epochs 300 --batch_size 128 --model SimplE --valid 1 --model_save_schedule 10
 ~~~
