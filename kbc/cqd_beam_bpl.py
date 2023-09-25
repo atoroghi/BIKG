@@ -136,7 +136,7 @@ if __name__ == "__main__":
                    QuerDAG.TYPE1_3_joint.value, QuerDAG.TYPE2_3.value, QuerDAG.TYPE3_3.value, QuerDAG.TYPE4_3.value,
                    'All', 'e']
 
-    t_norms = ['min', 'product']
+    t_norms = ['min', 'product', 'luka']
     normalize_choices = ['0', '1']
     quantifiers = ['existential', 'marginal_i', 'marginal_ui', 'fae_test', 'sanity']
 
